@@ -3,6 +3,7 @@ package com.devpush.yoga.service
 import com.devpush.yoga.dto.AuthResponse
 import com.devpush.yoga.dto.UserProfile
 import com.devpush.yoga.entity.User
+import com.devpush.yoga.util.SecurityLogger
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -34,7 +35,7 @@ class AuthService(
         try {
             // Validate Google ID token and extract user information
             val oAuthUserInfo = googleTokenValidator.validateToken(idToken)
-            logger.debug("Successfully validated Google token for user: {}", oAuthUserInfo.email)
+            SecurityLogger.logAuthenticationAttempt("GOOGLE", oAuthUserInfo.id, oAuthUserInfo.email)
             
             // Create or update user in database
             val user = userService.createOrUpdateUser(oAuthUserInfo)
@@ -51,7 +52,7 @@ class AuthService(
             
             val userProfile = userService.toUserProfile(user)
             
-            logger.info("Google authentication successful for user: {}", user.email)
+            SecurityLogger.logAuthenticationSuccess("GOOGLE", user.id.toString(), user.email)
             
             return AuthResponse(
                 accessToken = accessToken,
@@ -61,10 +62,10 @@ class AuthService(
             )
             
         } catch (ex: GoogleTokenValidationException) {
-            logger.error("Google token validation failed: {}", ex.message)
+            SecurityLogger.logAuthenticationFailure("GOOGLE", "Token validation failed: ${ex.message}")
             throw AuthenticationException("Google authentication failed: ${ex.message}", ex)
         } catch (ex: Exception) {
-            logger.error("Unexpected error during Google authentication", ex)
+            SecurityLogger.logAuthenticationFailure("GOOGLE", "Unexpected error: ${ex.message}")
             throw AuthenticationException("Authentication failed: ${ex.message}", ex)
         }
     }
@@ -84,7 +85,7 @@ class AuthService(
         try {
             // Validate Apple ID token and extract user information
             val oAuthUserInfo = appleTokenValidator.validateToken(idToken)
-            logger.debug("Successfully validated Apple token for user: {}", oAuthUserInfo.email)
+            SecurityLogger.logAuthenticationAttempt("APPLE", oAuthUserInfo.id, oAuthUserInfo.email)
             
             // Create or update user in database
             val user = userService.createOrUpdateUser(oAuthUserInfo)
@@ -101,7 +102,7 @@ class AuthService(
             
             val userProfile = userService.toUserProfile(user)
             
-            logger.info("Apple authentication successful for user: {}", user.email)
+            SecurityLogger.logAuthenticationSuccess("APPLE", user.id.toString(), user.email)
             
             return AuthResponse(
                 accessToken = accessToken,
@@ -111,10 +112,10 @@ class AuthService(
             )
             
         } catch (ex: AppleTokenValidationException) {
-            logger.error("Apple token validation failed: {}", ex.message)
+            SecurityLogger.logAuthenticationFailure("APPLE", "Token validation failed: ${ex.message}")
             throw AuthenticationException("Apple authentication failed: ${ex.message}", ex)
         } catch (ex: Exception) {
-            logger.error("Unexpected error during Apple authentication", ex)
+            SecurityLogger.logAuthenticationFailure("APPLE", "Unexpected error: ${ex.message}")
             throw AuthenticationException("Authentication failed: ${ex.message}", ex)
         }
     }
@@ -135,12 +136,12 @@ class AuthService(
             // Validate refresh token
             val refreshTokenEntity = refreshTokenService.validateToken(refreshToken)
                 .orElseThrow { 
-                    logger.warn("Invalid or expired refresh token provided")
+                    SecurityLogger.logTokenRefreshFailure("Invalid or expired refresh token")
                     TokenRefreshException("Invalid or expired refresh token")
                 }
             
             val user = refreshTokenEntity.user
-            logger.debug("Refresh token validated for user: {}", user.id)
+            SecurityLogger.logTokenRefreshAttempt(user.id.toString())
             
             // Generate new JWT tokens
             val newAccessToken = jwtTokenManager.generateAccessToken(user)
@@ -157,7 +158,7 @@ class AuthService(
             
             val userProfile = userService.toUserProfile(user)
             
-            logger.info("Token refresh successful for user: {}", user.email)
+            SecurityLogger.logTokenRefreshSuccess(user.id.toString())
             
             return AuthResponse(
                 accessToken = newAccessToken,
@@ -167,10 +168,10 @@ class AuthService(
             )
             
         } catch (ex: TokenRefreshException) {
-            logger.error("Token refresh failed: {}", ex.message)
+            SecurityLogger.logTokenRefreshFailure("Token refresh exception: ${ex.message}")
             throw ex
         } catch (ex: Exception) {
-            logger.error("Unexpected error during token refresh", ex)
+            SecurityLogger.logTokenRefreshFailure("Unexpected error: ${ex.message}")
             throw AuthenticationException("Token refresh failed: ${ex.message}", ex)
         }
     }
@@ -186,19 +187,26 @@ class AuthService(
         logger.info("Starting user logout")
         
         try {
+            // Try to get user info for logging before revoking token
+            val refreshTokenEntity = refreshTokenService.validateToken(refreshToken)
+            val userId = refreshTokenEntity.map { it.user.id.toString() }.orElse(null)
+            
+            SecurityLogger.logLogoutAttempt(userId)
+            
             // Revoke the refresh token
             val revoked = refreshTokenService.revokeToken(refreshToken)
             
             if (revoked) {
-                logger.info("User logout successful - refresh token revoked")
+                SecurityLogger.logLogoutSuccess(userId)
             } else {
                 logger.warn("Logout attempted with non-existent refresh token")
                 // Don't throw exception for non-existent tokens to prevent information disclosure
                 // Client should treat this as successful logout
+                SecurityLogger.logLogoutSuccess(null)
             }
             
         } catch (ex: Exception) {
-            logger.error("Unexpected error during logout", ex)
+            SecurityLogger.logSecurityError("LOGOUT_ERROR", ex.message ?: "Unknown error")
             throw LogoutException("Logout failed: ${ex.message}", ex)
         }
     }
@@ -217,23 +225,25 @@ class AuthService(
             // First validate the refresh token to get the user
             val refreshTokenEntity = refreshTokenService.validateToken(refreshToken)
                 .orElseThrow { 
-                    logger.warn("Invalid refresh token provided for logout from all devices")
+                    SecurityLogger.logSecurityError("LOGOUT_ALL_DEVICES_ERROR", "Invalid refresh token provided")
                     LogoutException("Invalid refresh token")
                 }
             
             val user = refreshTokenEntity.user
+            SecurityLogger.logLogoutAttempt(user.id.toString())
             
             // Revoke all refresh tokens for this user
             val revokedCount = refreshTokenService.revokeAllTokensForUser(user)
             
             logger.info("Logout from all devices successful - revoked {} tokens for user: {}", 
                        revokedCount, user.email)
+            SecurityLogger.logLogoutSuccess(user.id.toString())
             
         } catch (ex: LogoutException) {
-            logger.error("Logout from all devices failed: {}", ex.message)
+            SecurityLogger.logSecurityError("LOGOUT_ALL_DEVICES_ERROR", ex.message ?: "Logout exception")
             throw ex
         } catch (ex: Exception) {
-            logger.error("Unexpected error during logout from all devices", ex)
+            SecurityLogger.logSecurityError("LOGOUT_ALL_DEVICES_ERROR", "Unexpected error: ${ex.message}")
             throw LogoutException("Logout from all devices failed: ${ex.message}", ex)
         }
     }
