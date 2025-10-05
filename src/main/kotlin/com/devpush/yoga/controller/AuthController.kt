@@ -4,9 +4,12 @@ import com.devpush.yoga.dto.*
 import com.devpush.yoga.service.AuthService
 import com.devpush.yoga.service.UserService
 import com.devpush.yoga.service.JwtTokenManager
+import com.devpush.yoga.service.RateLimitService
 import com.devpush.yoga.service.AuthenticationException
 import com.devpush.yoga.service.TokenRefreshException
 import com.devpush.yoga.service.LogoutException
+import com.devpush.yoga.util.ClientIpExtractor
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -15,11 +18,11 @@ import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = ["*"]) // Configure appropriately for production
 class AuthController(
     private val authService: AuthService,
     private val userService: UserService,
-    private val jwtTokenManager: JwtTokenManager
+    private val jwtTokenManager: JwtTokenManager,
+    private val rateLimitService: RateLimitService
 ) {
     
     private val logger = LoggerFactory.getLogger(AuthController::class.java)
@@ -29,11 +32,19 @@ class AuthController(
      * Validates Google ID token and returns JWT tokens
      * 
      * @param request GoogleLoginRequest containing the Google ID token
+     * @param httpRequest HttpServletRequest for extracting client IP
      * @return AuthResponse with JWT tokens and user profile
      */
     @PostMapping("/google/login")
-    fun googleLogin(@Valid @RequestBody request: GoogleLoginRequest): ResponseEntity<AuthResponse> {
-        logger.info("Received Google login request")
+    fun googleLogin(
+        @Valid @RequestBody request: GoogleLoginRequest,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<AuthResponse> {
+        val clientIp = ClientIpExtractor.getClientIp(httpRequest)
+        logger.info("Received Google login request from IP: {}", clientIp)
+        
+        // Apply rate limiting
+        rateLimitService.checkAuthenticationRateLimit(clientIp)
         
         return try {
             val authResponse = authService.authenticateWithGoogle(request.idToken)
@@ -50,11 +61,19 @@ class AuthController(
      * Validates Apple ID token and returns JWT tokens
      * 
      * @param request AppleLoginRequest containing the Apple ID token
+     * @param httpRequest HttpServletRequest for extracting client IP
      * @return AuthResponse with JWT tokens and user profile
      */
     @PostMapping("/apple/login")
-    fun appleLogin(@Valid @RequestBody request: AppleLoginRequest): ResponseEntity<AuthResponse> {
-        logger.info("Received Apple login request")
+    fun appleLogin(
+        @Valid @RequestBody request: AppleLoginRequest,
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<AuthResponse> {
+        val clientIp = ClientIpExtractor.getClientIp(httpRequest)
+        logger.info("Received Apple login request from IP: {}", clientIp)
+        
+        // Apply rate limiting
+        rateLimitService.checkAuthenticationRateLimit(clientIp)
         
         return try {
             val authResponse = authService.authenticateWithApple(request.idToken)

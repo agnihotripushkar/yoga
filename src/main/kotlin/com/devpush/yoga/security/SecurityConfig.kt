@@ -27,6 +27,47 @@ class SecurityConfig(
             // Configure CORS
             .cors { it.configurationSource(corsConfigurationSource()) }
             
+            // Configure security headers
+            .headers { headers ->
+                headers
+                    // Prevent clickjacking attacks
+                    .frameOptions { it.deny() }
+                    
+                    // Prevent MIME type sniffing
+                    .contentTypeOptions { }
+                    
+                    // Enable XSS protection
+                    .httpStrictTransportSecurity { hstsConfig ->
+                        hstsConfig
+                            .maxAgeInSeconds(31536000) // 1 year
+                            .includeSubdomains(true)
+                            .preload(true)
+                    }
+                    
+                    // Add custom security headers
+                    .and()
+                    .addHeaderWriter { request, response ->
+                        // Prevent XSS attacks
+                        response.setHeader("X-XSS-Protection", "1; mode=block")
+                        
+                        // Control referrer information
+                        response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin")
+                        
+                        // Content Security Policy for API responses
+                        response.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+                        
+                        // Prevent caching of sensitive responses
+                        if (request.requestURI.startsWith("/api/auth/")) {
+                            response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate")
+                            response.setHeader("Pragma", "no-cache")
+                            response.setHeader("Expires", "0")
+                        }
+                        
+                        // Add API version header
+                        response.setHeader("X-API-Version", "1.0")
+                    }
+            }
+            
             // Configure session management - stateless for JWT
             .sessionManagement { 
                 it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) 
