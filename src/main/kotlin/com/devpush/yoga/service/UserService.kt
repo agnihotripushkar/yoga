@@ -1,6 +1,7 @@
 package com.devpush.yoga.service
 
 import com.devpush.yoga.dto.OAuthUserInfo
+import com.devpush.yoga.dto.ProfileUpdateRequest
 import com.devpush.yoga.dto.UserProfile
 import com.devpush.yoga.entity.OAuthProvider
 import com.devpush.yoga.entity.User
@@ -8,6 +9,15 @@ import com.devpush.yoga.repository.UserRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.multipart.MultipartFile
+import java.io.File
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
+import java.nio.file.StandardCopyOption
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 @Service
@@ -111,7 +121,12 @@ class UserService(
             email = user.email,
             name = user.name,
             profilePicture = user.profilePicture,
-            provider = user.provider
+            provider = user.provider,
+            bio = user.bio,
+            fitnessLevel = user.fitnessLevel,
+            preferences = user.preferences,
+            createdAt = user.createdAt,
+            updatedAt = user.updatedAt
         )
     }
     
@@ -131,5 +146,189 @@ class UserService(
     fun getUserProfile(userId: Long): Optional<UserProfile> {
         logger.debug("Getting user profile for userId: {}", userId)
         return findById(userId).map { toUserProfile(it) }
+    }
+    
+    /**
+     * Update user profile with new information
+     * Used for profile management functionality
+     */
+    fun updateProfile(userId: Long, profileUpdateRequest: ProfileUpdateRequest): UserProfile {
+        logger.info("Updating profile for userId: {}", userId)
+        
+        val user = findById(userId).orElseThrow { 
+            IllegalArgumentException("User not found with id: $userId") 
+        }
+        
+        // Update profile fields with validation and sanitization
+        profileUpdateRequest.name?.let { 
+            user.name = sanitizeInput(it.trim())
+        }
+        
+        profileUpdateRequest.bio?.let { 
+            user.bio = sanitizeInput(it.trim())
+        }
+        
+        profileUpdateRequest.fitnessLevel?.let { 
+            user.fitnessLevel = it
+        }
+        
+        profileUpdateRequest.preferences?.let { 
+            user.preferences = sanitizeInput(it.trim())
+        }
+        
+        val updatedUser = userRepository.save(user)
+        logger.info("Successfully updated profile for userId: {}", userId)
+        
+        return toUserProfile(updatedUser)
+    }
+    
+    /**
+     * Upload and save profile picture for user
+     * Used for profile picture management
+     */
+    fun uploadProfilePicture(userId: Long, file: MultipartFile): String {
+        logger.info("Uploading profile picture for userId: {}", userId)
+        
+        val user = findById(userId).orElseThrow { 
+            IllegalArgumentException("User not found with id: $userId") 
+        }
+        
+        // Validate file
+        validateProfilePicture(file)
+        
+        // Delete existing profile picture if it exists
+        user.profilePicture?.let { deleteProfilePictureFile(it) }
+        
+        // Save new profile picture
+        val fileName = generateProfilePictureFileName(userId, file)
+        val filePath = saveProfilePictureFile(file, fileName)
+        
+        // Update user entity
+        user.profilePicture = filePath
+        userRepository.save(user)
+        
+        logger.info("Successfully uploaded profile picture for userId: {}", userId)
+        return filePath
+    }
+    
+    /**
+     * Delete user's profile picture
+     * Used for profile picture removal
+     */
+    fun deleteProfilePicture(userId: Long): Boolean {
+        logger.info("Deleting profile picture for userId: {}", userId)
+        
+        val user = findById(userId).orElseThrow { 
+            IllegalArgumentException("User not found with id: $userId") 
+        }
+        
+        val profilePicture = user.profilePicture
+        if (profilePicture != null) {
+            deleteProfilePictureFile(profilePicture)
+            user.profilePicture = null
+            userRepository.save(user)
+            logger.info("Successfully deleted profile picture for userId: {}", userId)
+            return true
+        }
+        
+        logger.debug("No profile picture to delete for userId: {}", userId)
+        return false
+    }
+    
+    /**
+     * Validate uploaded profile picture file
+     */
+    private fun validateProfilePicture(file: MultipartFile) {
+        // Check if file is empty
+        if (file.isEmpty) {
+            throw IllegalArgumentException("Profile picture file cannot be empty")
+        }
+        
+        // Check file size (5MB limit)
+        val maxSize = 5 * 1024 * 1024 // 5MB in bytes
+        if (file.size > maxSize) {
+            throw IllegalArgumentException("Profile picture file size cannot exceed 5MB")
+        }
+        
+        // Check file type
+        val allowedTypes = setOf("image/jpeg", "image/png", "image/webp")
+        val contentType: String? = file.contentType
+        if (contentType == null || contentType !in allowedTypes) {
+            throw IllegalArgumentException("Profile picture must be JPEG, PNG, or WebP format")
+        }
+        
+        // Validate file extension
+        val originalFilename = file.originalFilename ?: ""
+        val extension = if (originalFilename.contains('.')) {
+            originalFilename.substringAfterLast('.').lowercase()
+        } else {
+            ""
+        }
+        val allowedExtensions = setOf("jpg", "jpeg", "png", "webp")
+        if (extension.isEmpty() || extension !in allowedExtensions) {
+            throw IllegalArgumentException("Invalid file extension. Allowed: jpg, jpeg, png, webp")
+        }
+    }
+    
+    /**
+     * Generate unique filename for profile picture
+     */
+    private fun generateProfilePictureFileName(userId: Long, file: MultipartFile): String {
+        val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
+        val originalFilename = file.originalFilename ?: "profile.jpg"
+        val extension = if (originalFilename.contains('.')) {
+            originalFilename.substringAfterLast('.')
+        } else {
+            "jpg"
+        }
+        return "profile_${userId}_${timestamp}.${extension}"
+    }
+    
+    /**
+     * Save profile picture file to storage
+     */
+    private fun saveProfilePictureFile(file: MultipartFile, fileName: String): String {
+        try {
+            // Create uploads directory if it doesn't exist
+            val uploadDir = Paths.get("uploads", "profiles")
+            Files.createDirectories(uploadDir)
+            
+            // Save file
+            val filePath = uploadDir.resolve(fileName)
+            Files.copy(file.inputStream, filePath, StandardCopyOption.REPLACE_EXISTING)
+            
+            // Return relative path for storage in database
+            return "uploads/profiles/$fileName"
+        } catch (e: IOException) {
+            logger.error("Failed to save profile picture file: {}", fileName, e)
+            throw RuntimeException("Failed to save profile picture", e)
+        }
+    }
+    
+    /**
+     * Delete profile picture file from storage
+     */
+    private fun deleteProfilePictureFile(filePath: String) {
+        try {
+            val path = Paths.get(filePath)
+            if (Files.exists(path)) {
+                Files.delete(path)
+                logger.debug("Deleted profile picture file: {}", filePath)
+            }
+        } catch (e: IOException) {
+            logger.warn("Failed to delete profile picture file: {}", filePath, e)
+        }
+    }
+    
+    /**
+     * Sanitize user input to prevent XSS and other security issues
+     */
+    private fun sanitizeInput(input: String): String {
+        return input
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&#x27;")
+            .replace("/", "&#x2F;")
     }
 }
