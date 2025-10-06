@@ -4,6 +4,7 @@ import jakarta.persistence.*
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
+import jakarta.validation.constraints.Size
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.UpdateTimestamp
 import java.time.LocalDateTime
@@ -39,6 +40,19 @@ data class User(
     @Column(name = "provider_id", nullable = false)
     var providerId: String,
     
+    // New profile fields
+    @Size(max = 500, message = "Bio cannot exceed 500 characters")
+    @Column(length = 500)
+    var bio: String? = null,
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fitness_level")
+    var fitnessLevel: FitnessLevel? = null,
+    
+    @Size(max = 1000, message = "Preferences cannot exceed 1000 characters")
+    @Column(length = 1000)
+    var preferences: String? = null,
+    
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: LocalDateTime? = null,
@@ -51,6 +65,9 @@ data class User(
     constructor() : this(
         email = "",
         provider = OAuthProvider.GOOGLE,
-        providerId = ""
+        providerId = "",
+        bio = null,
+        fitnessLevel = null,
+        preferences = null
     )
 }
