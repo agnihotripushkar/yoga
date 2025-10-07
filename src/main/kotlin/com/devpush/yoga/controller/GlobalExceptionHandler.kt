@@ -1,11 +1,12 @@
 package com.devpush.yoga.controller
 
 import com.devpush.yoga.dto.ErrorResponse
-import com.devpush.yoga.service.AuthenticationException
-import com.devpush.yoga.service.TokenRefreshException
-import com.devpush.yoga.service.LogoutException
-import com.devpush.yoga.service.GoogleTokenValidationException
-import com.devpush.yoga.service.AppleTokenValidationException
+// Custom exceptions will be created if needed
+// import com.devpush.yoga.service.AuthenticationException
+// import com.devpush.yoga.service.TokenRefreshException
+// import com.devpush.yoga.service.LogoutException
+// import com.devpush.yoga.service.GoogleTokenValidationException
+// import com.devpush.yoga.service.AppleTokenValidationException
 import com.devpush.yoga.exception.RateLimitExceededException
 import com.devpush.yoga.exception.FileUploadException
 import com.devpush.yoga.exception.ProfileException
@@ -46,87 +47,19 @@ class GlobalExceptionHandler {
     /**
      * Handle authentication exceptions (401 Unauthorized)
      */
-    @ExceptionHandler(AuthenticationException::class)
-    fun handleAuthenticationException(ex: AuthenticationException): ResponseEntity<ErrorResponse> {
-        SecurityLogger.logSecurityError("AUTHENTICATION_ERROR", ex.message ?: "Authentication failed")
-        
-        val errorResponse = ErrorResponse(
-            error = "AUTHENTICATION_FAILED",
-            message = ex.message ?: "Authentication failed",
-            status = HttpStatus.UNAUTHORIZED.value(),
-            timestamp = LocalDateTime.now()
-        )
-        
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse)
-    }
-    
-    /**
-     * Handle token refresh exceptions (401 Unauthorized)
-     */
-    @ExceptionHandler(TokenRefreshException::class)
-    fun handleTokenRefreshException(ex: TokenRefreshException): ResponseEntity<ErrorResponse> {
-        logger.error("Token refresh error: {}", ex.message)
-        
-        val errorResponse = ErrorResponse(
-            error = "TOKEN_REFRESH_FAILED",
-            message = ex.message ?: "Token refresh failed",
-            status = HttpStatus.UNAUTHORIZED.value(),
-            timestamp = LocalDateTime.now()
-        )
-        
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse)
-    }
-    
-    /**
-     * Handle logout exceptions (400 Bad Request)
-     */
-    @ExceptionHandler(LogoutException::class)
-    fun handleLogoutException(ex: LogoutException): ResponseEntity<ErrorResponse> {
-        logger.error("Logout error: {}", ex.message)
-        
-        val errorResponse = ErrorResponse(
-            error = "LOGOUT_FAILED",
-            message = ex.message ?: "Logout failed",
-            status = HttpStatus.BAD_REQUEST.value(),
-            timestamp = LocalDateTime.now()
-        )
-        
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse)
-    }
-    
-    /**
-     * Handle Google token validation exceptions (401 Unauthorized)
-     */
-    @ExceptionHandler(GoogleTokenValidationException::class)
-    fun handleGoogleTokenValidationException(ex: GoogleTokenValidationException): ResponseEntity<ErrorResponse> {
-        logger.error("Google token validation error: {}", ex.message)
-        
-        val errorResponse = ErrorResponse(
-            error = "GOOGLE_TOKEN_INVALID",
-            message = ex.message ?: "Google token validation failed",
-            status = HttpStatus.UNAUTHORIZED.value(),
-            timestamp = LocalDateTime.now()
-        )
-        
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse)
-    }
-    
-    /**
-     * Handle Apple token validation exceptions (401 Unauthorized)
-     */
-    @ExceptionHandler(AppleTokenValidationException::class)
-    fun handleAppleTokenValidationException(ex: AppleTokenValidationException): ResponseEntity<ErrorResponse> {
-        logger.error("Apple token validation error: {}", ex.message)
-        
-        val errorResponse = ErrorResponse(
-            error = "APPLE_TOKEN_INVALID",
-            message = ex.message ?: "Apple token validation failed",
-            status = HttpStatus.UNAUTHORIZED.value(),
-            timestamp = LocalDateTime.now()
-        )
-        
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse)
-    }
+    // @ExceptionHandler(AuthenticationException::class)
+    // fun handleAuthenticationException(ex: AuthenticationException): ResponseEntity<ErrorResponse> {
+    //     SecurityLogger.logSecurityError("AUTHENTICATION_ERROR", ex.message ?: "Authentication failed")
+    //     
+    //     val errorResponse = ErrorResponse(
+    //         error = "AUTHENTICATION_FAILED",
+    //         message = ex.message ?: "Authentication failed",
+    //         status = HttpStatus.UNAUTHORIZED.value(),
+    //         timestamp = LocalDateTime.now()
+    //     )
+    //     
+    //     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse)
+    // }
     
     /**
      * Handle validation errors (400 Bad Request)

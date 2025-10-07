@@ -1,8 +1,8 @@
 package com.devpush.yoga.service
 
-import com.devpush.yoga.dto.OAuthUserInfo
+import com.devpush.yoga.features.auth.dto.OAuthUserInfo
 import com.devpush.yoga.features.profile.dto.ProfileUpdateRequest
-import com.devpush.yoga.dto.UserProfile
+import com.devpush.yoga.features.auth.dto.UserProfile
 import com.devpush.yoga.entity.OAuthProvider
 import com.devpush.yoga.entity.User
 import com.devpush.yoga.repository.UserRepository

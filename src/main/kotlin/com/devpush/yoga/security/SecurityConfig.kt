@@ -43,6 +43,7 @@ class SecurityConfig(
                             .includeSubDomains(true)
                             .preload(true)
                     }
+            }
             
             // Configure session management - stateless for JWT
             .sessionManagement { 
@@ -58,7 +59,11 @@ class SecurityConfig(
                         "/api/auth/apple/login",
                         "/api/auth/refresh",
                         "/actuator/health",
-                        "/error"
+                        "/error",
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/api-docs",
+                        "/api-docs/**"
                     ).permitAll()
                     
                     // Profile management endpoints require authentication
