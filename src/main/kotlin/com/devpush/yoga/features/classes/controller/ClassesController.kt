@@ -4,6 +4,14 @@ import com.devpush.yoga.features.classes.dto.*
 import com.devpush.yoga.features.classes.service.ClassesService
 import com.devpush.yoga.features.auth.service.JwtTokenManager
 import com.devpush.yoga.service.RateLimitService
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.responses.ApiResponses
+import io.swagger.v3.oas.annotations.security.SecurityRequirement
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -12,6 +20,7 @@ import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/classes")
+@Tag(name = "Yoga Classes", description = "Yoga class catalog, search, and favorites management")
 class ClassesController(
     private val classesService: ClassesService,
     private val jwtTokenManager: JwtTokenManager,
@@ -20,9 +29,27 @@ class ClassesController(
     
     private val logger = LoggerFactory.getLogger(ClassesController::class.java)
     
+    @Operation(
+        summary = "Get Yoga Classes",
+        description = "Retrieve paginated list of yoga classes with optional filtering by difficulty, duration, and instructor",
+        security = [SecurityRequirement(name = "bearerAuth")]
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Classes retrieved successfully",
+                content = [Content(schema = Schema(implementation = ClassListResponse::class))]
+            ),
+            ApiResponse(responseCode = "401", description = "Unauthorized"),
+            ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+        ]
+    )
     @GetMapping
     fun getClasses(
+        @Parameter(description = "JWT access token")
         @RequestHeader("Authorization") authorization: String,
+        @Parameter(description = "Search and filter parameters")
         @Valid @ModelAttribute searchRequest: ClassSearchRequest
     ): ResponseEntity<ClassListResponse> {
         logger.debug("Received classes list request with filters")
@@ -41,9 +68,27 @@ class ClassesController(
         }
     }
     
+    @Operation(
+        summary = "Get Class Details",
+        description = "Retrieve detailed information about a specific yoga class including video URL",
+        security = [SecurityRequirement(name = "bearerAuth")]
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Class details retrieved successfully",
+                content = [Content(schema = Schema(implementation = YogaClassResponse::class))]
+            ),
+            ApiResponse(responseCode = "401", description = "Unauthorized"),
+            ApiResponse(responseCode = "404", description = "Class not found")
+        ]
+    )
     @GetMapping("/{classId}")
     fun getClassById(
+        @Parameter(description = "JWT access token")
         @RequestHeader("Authorization") authorization: String,
+        @Parameter(description = "Yoga class ID", example = "1")
         @PathVariable classId: Long
     ): ResponseEntity<YogaClassResponse> {
         logger.debug("Received class details request for classId: {}", classId)
@@ -58,9 +103,27 @@ class ClassesController(
         }
     }
     
+    @Operation(
+        summary = "Search Yoga Classes",
+        description = "Search yoga classes by title, description, or instructor name with optional filters",
+        security = [SecurityRequirement(name = "bearerAuth")]
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Search results retrieved successfully",
+                content = [Content(schema = Schema(implementation = ClassListResponse::class))]
+            ),
+            ApiResponse(responseCode = "401", description = "Unauthorized"),
+            ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+        ]
+    )
     @GetMapping("/search")
     fun searchClasses(
+        @Parameter(description = "JWT access token")
         @RequestHeader("Authorization") authorization: String,
+        @Parameter(description = "Search parameters including query text and filters")
         @Valid @ModelAttribute searchRequest: ClassSearchRequest
     ): ResponseEntity<ClassListResponse> {
         logger.debug("Received class search request with query: '{}'", searchRequest.query)
@@ -79,9 +142,28 @@ class ClassesController(
         }
     }
     
+    @Operation(
+        summary = "Add Class to Favorites",
+        description = "Bookmark a yoga class to the user's favorites list",
+        security = [SecurityRequirement(name = "bearerAuth")]
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "201",
+                description = "Class added to favorites successfully",
+                content = [Content(schema = Schema(implementation = FavoriteResponse::class))]
+            ),
+            ApiResponse(responseCode = "409", description = "Class already in favorites"),
+            ApiResponse(responseCode = "401", description = "Unauthorized"),
+            ApiResponse(responseCode = "404", description = "Class not found")
+        ]
+    )
     @PostMapping("/{classId}/favorite")
     fun addToFavorites(
+        @Parameter(description = "JWT access token")
         @RequestHeader("Authorization") authorization: String,
+        @Parameter(description = "Yoga class ID to add to favorites", example = "1")
         @PathVariable classId: Long
     ): ResponseEntity<FavoriteResponse> {
         logger.info("Received add to favorites request for classId: {}", classId)
@@ -97,9 +179,27 @@ class ClassesController(
         }
     }
     
+    @Operation(
+        summary = "Remove Class from Favorites",
+        description = "Remove a yoga class from the user's favorites list",
+        security = [SecurityRequirement(name = "bearerAuth")]
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Class removed from favorites successfully",
+                content = [Content(schema = Schema(implementation = FavoriteResponse::class))]
+            ),
+            ApiResponse(responseCode = "404", description = "Class not in favorites or not found"),
+            ApiResponse(responseCode = "401", description = "Unauthorized")
+        ]
+    )
     @DeleteMapping("/{classId}/favorite")
     fun removeFromFavorites(
+        @Parameter(description = "JWT access token")
         @RequestHeader("Authorization") authorization: String,
+        @Parameter(description = "Yoga class ID to remove from favorites", example = "1")
         @PathVariable classId: Long
     ): ResponseEntity<FavoriteResponse> {
         logger.info("Received remove from favorites request for classId: {}", classId)
@@ -115,10 +215,29 @@ class ClassesController(
         }
     }
     
+    @Operation(
+        summary = "Get Favorite Classes",
+        description = "Retrieve the user's bookmarked yoga classes with pagination",
+        security = [SecurityRequirement(name = "bearerAuth")]
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Favorite classes retrieved successfully",
+                content = [Content(schema = Schema(implementation = Array<FavoriteClassResponse>::class))]
+            ),
+            ApiResponse(responseCode = "400", description = "Invalid pagination parameters"),
+            ApiResponse(responseCode = "401", description = "Unauthorized")
+        ]
+    )
     @GetMapping("/favorites")
     fun getFavoriteClasses(
+        @Parameter(description = "JWT access token")
         @RequestHeader("Authorization") authorization: String,
+        @Parameter(description = "Page number (0-based)", example = "0")
         @RequestParam(defaultValue = "0") page: Int,
+        @Parameter(description = "Page size (1-100)", example = "20")
         @RequestParam(defaultValue = "20") size: Int
     ): ResponseEntity<List<FavoriteClassResponse>> {
         logger.debug("Received favorite classes request for page: {}, size: {}", page, size)

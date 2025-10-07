@@ -1,374 +1,310 @@
-# Yoga Authentication API Documentation
+# Yoga App API Documentation
+
+## Overview
+
+The Yoga App API provides a comprehensive backend system for a yoga application with OAuth authentication, profile management, progress tracking, and yoga class management features.
 
 ## Base URL
-```
-http://localhost:8080/api/auth
-```
+
+- **Development**: `http://localhost:8080`
+- **Production**: `https://api.yogaapp.com`
+
+## Interactive Documentation
+
+Once the application is running, you can access the interactive Swagger UI documentation at:
+
+- **Swagger UI**: `http://localhost:8080/swagger-ui.html`
+- **OpenAPI JSON**: `http://localhost:8080/api-docs`
 
 ## Authentication
-Most endpoints require a Bearer token in the Authorization header:
+
+The API uses JWT (JSON Web Tokens) for authentication. Most endpoints require a valid access token in the Authorization header.
+
+### Header Format
 ```
-Authorization: Bearer <access_token>
+Authorization: Bearer <your-jwt-token>
 ```
+
+### Getting Started
+
+1. **Sign in with OAuth**: Use Google or Apple Sign-In to get JWT tokens
+2. **Use Access Token**: Include the access token in subsequent API calls
+3. **Refresh Tokens**: Use the refresh token to get new access tokens when they expire
+
+## API Endpoints
+
+### Authentication (`/api/auth`)
+
+#### POST `/api/auth/google/login`
+Authenticate with Google ID token.
+
+**Request Body:**
+```json
+{
+  "idToken": "google-id-token-here"
+}
+```
+
+**Response:**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "name": "John Doe",
+    "profilePicture": null,
+    "fitnessLevel": "BEGINNER"
+  }
+}
+```
+
+#### POST `/api/auth/apple/login`
+Authenticate with Apple ID token.
+
+#### POST `/api/auth/refresh`
+Refresh access token using refresh token.
+
+#### POST `/api/auth/logout`
+Invalidate refresh token and logout.
+
+#### GET `/api/auth/profile`
+Get authenticated user's profile information.
+
+### Profile Management (`/api/profile`)
+
+#### PUT `/api/profile`
+Update user profile information.
+
+**Request Body:**
+```json
+{
+  "name": "John Doe",
+  "bio": "Yoga enthusiast and beginner",
+  "fitnessLevel": "INTERMEDIATE"
+}
+```
+
+#### POST `/api/profile/picture`
+Upload profile picture (multipart/form-data).
+
+**Form Data:**
+- `file`: Image file (JPEG, PNG, WebP, max 5MB)
+
+#### DELETE `/api/profile/picture`
+Remove current profile picture.
+
+### Progress Tracking (`/api/progress`)
+
+#### POST `/api/progress/session`
+Record a completed yoga session.
+
+**Request Body:**
+```json
+{
+  "classId": 1,
+  "durationMinutes": 45,
+  "notes": "Great session!"
+}
+```
+
+#### GET `/api/progress/summary`
+Get overall progress statistics.
+
+**Response:**
+```json
+{
+  "totalSessions": 25,
+  "totalDurationMinutes": 1125,
+  "totalCaloriesBurned": 4500,
+  "averageSessionDuration": 45,
+  "currentStreak": 7,
+  "longestStreak": 12
+}
+```
+
+#### GET `/api/progress/weekly?weekOffset=0`
+Get weekly progress data.
+
+**Query Parameters:**
+- `weekOffset`: Week offset (0 = current week, 1 = last week, max 52)
+
+#### GET `/api/progress/monthly?monthOffset=0`
+Get monthly progress data.
+
+**Query Parameters:**
+- `monthOffset`: Month offset (0 = current month, 1 = last month, max 24)
+
+### Yoga Classes (`/api/classes`)
+
+#### GET `/api/classes`
+Get paginated list of yoga classes with optional filtering.
+
+**Query Parameters:**
+- `page`: Page number (default: 0)
+- `size`: Page size (default: 20, max: 100)
+- `difficultyLevel`: Filter by difficulty (BEGINNER, INTERMEDIATE, ADVANCED)
+- `minDuration`: Minimum duration in minutes
+- `maxDuration`: Maximum duration in minutes
+- `instructor`: Filter by instructor name
+
+#### GET `/api/classes/{classId}`
+Get detailed information about a specific yoga class.
+
+#### GET `/api/classes/search`
+Search yoga classes by title, description, or instructor.
+
+**Query Parameters:**
+- `query`: Search text
+- `page`, `size`: Pagination parameters
+- Additional filter parameters (same as `/api/classes`)
+
+#### POST `/api/classes/{classId}/favorite`
+Add a class to user's favorites.
+
+#### DELETE `/api/classes/{classId}/favorite`
+Remove a class from user's favorites.
+
+#### GET `/api/classes/favorites`
+Get user's favorite classes.
+
+**Query Parameters:**
+- `page`: Page number (default: 0)
+- `size`: Page size (default: 20, max: 100)
 
 ## Rate Limiting
-Authentication endpoints (`/google/login`, `/apple/login`) are rate-limited by IP address to prevent abuse.
 
----
+The API implements rate limiting to ensure fair usage:
 
-## Endpoints
+- **Authentication endpoints**: 10 requests/minute
+- **File uploads**: 5 requests/minute
+- **Profile updates**: 10 requests/minute
+- **Progress queries**: 60 requests/minute
+- **Class searches**: 100 requests/minute
 
-### 1. Google OAuth Login
-
-Authenticate users using Google Sign-In ID tokens.
-
-**Endpoint:** `POST /api/auth/google/login`
-
-**Headers:**
-```
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "idToken": "string (required)"
-}
-```
-
-**Success Response (200 OK):**
-```json
-{
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refreshToken": "def502004a8b7c9d1e2f3a4b5c6d7e8f9a0b1c2d...",
-  "expiresIn": 3600,
-  "user": {
-    "id": 123,
-    "email": "user@gmail.com",
-    "name": "John Doe",
-    "profilePicture": "https://lh3.googleusercontent.com/a/...",
-    "provider": "GOOGLE"
-  }
-}
-```
-
-**Error Responses:**
-- `400 Bad Request`: Invalid or missing ID token
-- `401 Unauthorized`: Invalid Google ID token
-- `429 Too Many Requests`: Rate limit exceeded
-
-**Example cURL:**
-```bash
-curl -X POST http://localhost:8080/api/auth/google/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "idToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjE2NzAyN..."
-  }'
-```
-
----
-
-### 2. Apple OAuth Login
-
-Authenticate users using Apple Sign-In ID tokens.
-
-**Endpoint:** `POST /api/auth/apple/login`
-
-**Headers:**
-```
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "idToken": "string (required)"
-}
-```
-
-**Success Response (200 OK):**
-```json
-{
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refreshToken": "def502004a8b7c9d1e2f3a4b5c6d7e8f9a0b1c2d...",
-  "expiresIn": 3600,
-  "user": {
-    "id": 124,
-    "email": "user@privaterelay.appleid.com",
-    "name": "Jane Smith",
-    "profilePicture": null,
-    "provider": "APPLE"
-  }
-}
-```
-
-**Error Responses:**
-- `400 Bad Request`: Invalid or missing ID token
-- `401 Unauthorized`: Invalid Apple ID token
-- `429 Too Many Requests`: Rate limit exceeded
-
-**Example cURL:**
-```bash
-curl -X POST http://localhost:8080/api/auth/apple/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "idToken": "eyJraWQiOiJmaDZCczhDIiwiYWxnIjoiUlMyNTYifQ..."
-  }'
-```
-
----
-
-### 3. Refresh Token
-
-Generate new access and refresh tokens using a valid refresh token.
-
-**Endpoint:** `POST /api/auth/refresh`
-
-**Headers:**
-```
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "refreshToken": "string (required)"
-}
-```
-
-**Success Response (200 OK):**
-```json
-{
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refreshToken": "abc123004a8b7c9d1e2f3a4b5c6d7e8f9a0b1c2d...",
-  "expiresIn": 3600,
-  "user": {
-    "id": 123,
-    "email": "user@gmail.com",
-    "name": "John Doe",
-    "profilePicture": "https://lh3.googleusercontent.com/a/...",
-    "provider": "GOOGLE"
-  }
-}
-```
-
-**Error Responses:**
-- `400 Bad Request`: Invalid or missing refresh token
-- `401 Unauthorized`: Expired or revoked refresh token
-
-**Example cURL:**
-```bash
-curl -X POST http://localhost:8080/api/auth/refresh \
-  -H "Content-Type: application/json" \
-  -d '{
-    "refreshToken": "def502004a8b7c9d1e2f3a4b5c6d7e8f9a0b1c2d..."
-  }'
-```
-
----
-
-### 4. Logout
-
-Revoke a refresh token to log out the user.
-
-**Endpoint:** `POST /api/auth/logout`
-
-**Headers:**
-```
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "refreshToken": "string (required)"
-}
-```
-
-**Success Response (204 No Content):**
-```
-(Empty response body)
-```
-
-**Error Responses:**
-- `400 Bad Request`: Invalid or missing refresh token
-- `401 Unauthorized`: Token already revoked or invalid
-
-**Example cURL:**
-```bash
-curl -X POST http://localhost:8080/api/auth/logout \
-  -H "Content-Type: application/json" \
-  -d '{
-    "refreshToken": "def502004a8b7c9d1e2f3a4b5c6d7e8f9a0b1c2d..."
-  }'
-```
-
----
-
-### 5. Get User Profile
-
-Retrieve the authenticated user's profile information.
-
-**Endpoint:** `GET /api/auth/profile`
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-**Success Response (200 OK):**
-```json
-{
-  "id": 123,
-  "email": "user@gmail.com",
-  "name": "John Doe",
-  "profilePicture": "https://lh3.googleusercontent.com/a/...",
-  "provider": "GOOGLE"
-}
-```
-
-**Error Responses:**
-- `401 Unauthorized`: Missing, invalid, or expired access token
-- `404 Not Found`: User not found
-
-**Example cURL:**
-```bash
-curl -X GET http://localhost:8080/api/auth/profile \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-```
-
----
-
-## Data Models
-
-### AuthResponse
-```json
-{
-  "accessToken": "string",      // JWT access token
-  "refreshToken": "string",     // JWT refresh token
-  "expiresIn": "number",        // Token expiration time in seconds
-  "user": "UserProfile"         // User profile object
-}
-```
-
-### UserProfile
-```json
-{
-  "id": "number",               // Unique user ID
-  "email": "string",            // User's email address
-  "name": "string|null",        // User's display name (optional)
-  "profilePicture": "string|null", // Profile picture URL (optional)
-  "provider": "string"          // OAuth provider (GOOGLE or APPLE)
-}
-```
-
-### GoogleLoginRequest
-```json
-{
-  "idToken": "string"           // Google ID token (required)
-}
-```
-
-### AppleLoginRequest
-```json
-{
-  "idToken": "string"           // Apple ID token (required)
-}
-```
-
-### RefreshTokenRequest
-```json
-{
-  "refreshToken": "string"      // Refresh token (required)
-}
-```
-
----
+When rate limits are exceeded, the API returns a `429 Too Many Requests` status code.
 
 ## Error Handling
 
-All error responses follow this format:
+The API uses standard HTTP status codes and returns structured error responses:
 
 ```json
 {
-  "timestamp": "2024-01-15T10:30:00.000Z",
-  "status": 400,
-  "error": "Bad Request",
-  "message": "Detailed error message",
-  "path": "/api/auth/google/login"
+  "error": "ERROR_CODE",
+  "message": "Human-readable error message",
+  "timestamp": "2024-01-01T12:00:00Z"
 }
 ```
 
-### Common Error Codes
+### Common Status Codes
 
-- **400 Bad Request**: Invalid request format or missing required fields
-- **401 Unauthorized**: Authentication failed or token invalid/expired
-- **404 Not Found**: Resource not found
-- **429 Too Many Requests**: Rate limit exceeded
-- **500 Internal Server Error**: Server error
+- `200 OK`: Successful GET requests
+- `201 Created`: Successful POST requests that create resources
+- `204 No Content`: Successful DELETE requests
+- `400 Bad Request`: Invalid request data or parameters
+- `401 Unauthorized`: Missing or invalid authentication
+- `403 Forbidden`: Access denied
+- `404 Not Found`: Resource not found
+- `409 Conflict`: Resource already exists (e.g., duplicate favorite)
+- `413 Payload Too Large`: File upload size exceeded
+- `415 Unsupported Media Type`: Invalid file type
+- `429 Too Many Requests`: Rate limit exceeded
+- `500 Internal Server Error`: Server error
 
----
+## Data Models
 
-## Authentication Flow
+### User Profile
+```json
+{
+  "id": 1,
+  "email": "user@example.com",
+  "name": "John Doe",
+  "bio": "Yoga enthusiast",
+  "fitnessLevel": "INTERMEDIATE",
+  "profilePicture": "https://example.com/profile.jpg"
+}
+```
 
-### Initial Login Flow
-1. User initiates OAuth login (Google/Apple) in client app
-2. Client receives ID token from OAuth provider
-3. Client sends ID token to `/google/login` or `/apple/login`
-4. Server validates ID token with OAuth provider
-5. Server creates/updates user record
-6. Server generates JWT access and refresh tokens
-7. Server returns tokens and user profile
+### Yoga Class
+```json
+{
+  "id": 1,
+  "title": "Morning Flow",
+  "description": "Energizing morning yoga flow",
+  "durationMinutes": 30,
+  "difficultyLevel": "BEGINNER",
+  "instructor": "Sarah Johnson",
+  "videoUrl": "https://example.com/video.mp4",
+  "thumbnailUrl": "https://example.com/thumbnail.jpg",
+  "isFavorite": false
+}
+```
 
-### Subsequent API Calls
-1. Client includes access token in Authorization header
-2. Server validates access token
-3. Server processes request and returns response
+### Yoga Session
+```json
+{
+  "id": 123,
+  "durationMinutes": 45,
+  "caloriesBurned": 180,
+  "completedAt": "2024-01-15T10:30:00Z",
+  "yogaClass": {
+    "id": 1,
+    "title": "Morning Flow"
+  },
+  "notes": "Great session!"
+}
+```
 
-### Token Refresh Flow
-1. When access token expires, client calls `/refresh` with refresh token
-2. Server validates refresh token
-3. Server generates new access and refresh tokens
-4. Client updates stored tokens
+## Sample Requests
 
-### Logout Flow
-1. Client calls `/logout` with refresh token
-2. Server revokes the refresh token
-3. Client clears stored tokens
+### cURL Examples
 
----
+#### Login with Google
+```bash
+curl -X POST http://localhost:8080/api/auth/google/login \
+  -H "Content-Type: application/json" \
+  -d '{"idToken": "your-google-id-token"}'
+```
 
-## Rate Limiting
+#### Get Classes
+```bash
+curl -X GET "http://localhost:8080/api/classes?page=0&size=10&difficultyLevel=BEGINNER" \
+  -H "Authorization: Bearer your-access-token"
+```
 
-Authentication endpoints have the following rate limits:
-- **Google/Apple Login**: Limited by IP address
-- **Rate limit exceeded**: Returns 429 status code
+#### Record Session
+```bash
+curl -X POST http://localhost:8080/api/progress/session \
+  -H "Authorization: Bearer your-access-token" \
+  -H "Content-Type: application/json" \
+  -d '{"classId": 1, "durationMinutes": 30}'
+```
 
----
+#### Upload Profile Picture
+```bash
+curl -X POST http://localhost:8080/api/profile/picture \
+  -H "Authorization: Bearer your-access-token" \
+  -F "file=@profile.jpg"
+```
 
-## Security Considerations
+## Development Setup
 
-1. **HTTPS Only**: Always use HTTPS in production
-2. **Token Storage**: Store tokens securely on client side
-3. **Token Expiration**: Access tokens have short expiration times
-4. **Refresh Token Security**: Refresh tokens should be stored securely
-5. **Rate Limiting**: Prevents brute force attacks
-6. **Input Validation**: All inputs are validated server-side
+1. **Start the application**: `./gradlew bootRun`
+2. **Access Swagger UI**: `http://localhost:8080/swagger-ui.html`
+3. **View API docs**: `http://localhost:8080/api-docs`
 
----
+## Production Configuration
 
-## Testing with Postman
+For production deployment, ensure the following environment variables are set:
 
-Import this collection to test the API:
+- `DATABASE_URL`: PostgreSQL connection URL
+- `DATABASE_USERNAME`: Database username
+- `DATABASE_PASSWORD`: Database password
+- `JWT_SECRET`: Strong JWT secret key
+- `GOOGLE_CLIENT_ID`: Google OAuth client ID
+- `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_CLIENT_ID`, `APPLE_PRIVATE_KEY`: Apple OAuth configuration
 
-1. Create a new Postman collection
-2. Add environment variables:
-   - `base_url`: `http://localhost:8080`
-   - `access_token`: (set after login)
-   - `refresh_token`: (set after login)
+## Support
 
-3. Test the endpoints in this order:
-   - Google/Apple Login → Get tokens
-   - Get Profile → Test authentication
-   - Refresh Token → Test token refresh
-   - Logout → Test token revocation
+For API support and questions, contact the development team at dev@yogaapp.com.

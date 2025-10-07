@@ -6,6 +6,15 @@ import com.devpush.yoga.dto.UserProfile
 import com.devpush.yoga.features.auth.service.JwtTokenManager
 import com.devpush.yoga.service.UserService
 import com.devpush.yoga.service.RateLimitService
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.ExampleObject
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.responses.ApiResponses
+import io.swagger.v3.oas.annotations.security.SecurityRequirement
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
@@ -15,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile
 
 @RestController
 @RequestMapping("/api/profile")
+@Tag(name = "Profile Management", description = "User profile management endpoints")
 class ProfileController(
     private val userService: UserService,
     private val jwtTokenManager: JwtTokenManager,
@@ -23,12 +33,42 @@ class ProfileController(
     
     private val logger = LoggerFactory.getLogger(ProfileController::class.java)
     
-    /**
-     * Update user profile information
-     */
+    @Operation(
+        summary = "Update User Profile",
+        description = "Update user profile information including name, bio, and fitness level",
+        security = [SecurityRequirement(name = "bearerAuth")]
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Profile updated successfully",
+                content = [Content(
+                    schema = Schema(implementation = UserProfile::class),
+                    examples = [ExampleObject(
+                        value = """
+                        {
+                          "id": 1,
+                          "email": "user@example.com",
+                          "name": "John Doe",
+                          "bio": "Yoga enthusiast and beginner",
+                          "fitnessLevel": "INTERMEDIATE",
+                          "profilePicture": "https://example.com/profile.jpg"
+                        }
+                        """
+                    )]
+                )]
+            ),
+            ApiResponse(responseCode = "400", description = "Invalid profile data"),
+            ApiResponse(responseCode = "401", description = "Unauthorized"),
+            ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+        ]
+    )
     @PutMapping
     fun updateProfile(
+        @Parameter(description = "JWT access token", example = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
         @RequestHeader("Authorization") authorization: String,
+        @Parameter(description = "Profile update data")
         @Valid @RequestBody profileUpdateRequest: ProfileUpdateRequest
     ): ResponseEntity<UserProfile> {
         logger.info("Received profile update request")
@@ -49,12 +89,29 @@ class ProfileController(
         }
     }
     
-    /**
-     * Upload profile picture
-     */
+    @Operation(
+        summary = "Upload Profile Picture",
+        description = "Upload a new profile picture (JPEG, PNG, WebP formats, max 5MB)",
+        security = [SecurityRequirement(name = "bearerAuth")]
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Profile picture uploaded successfully",
+                content = [Content(schema = Schema(implementation = ProfilePictureResponse::class))]
+            ),
+            ApiResponse(responseCode = "400", description = "Invalid file format or size"),
+            ApiResponse(responseCode = "401", description = "Unauthorized"),
+            ApiResponse(responseCode = "413", description = "File too large"),
+            ApiResponse(responseCode = "429", description = "Rate limit exceeded")
+        ]
+    )
     @PostMapping("/picture", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun uploadProfilePicture(
+        @Parameter(description = "JWT access token")
         @RequestHeader("Authorization") authorization: String,
+        @Parameter(description = "Profile picture file (JPEG, PNG, WebP, max 5MB)")
         @RequestParam("file") file: MultipartFile
     ): ResponseEntity<ProfilePictureResponse> {
         logger.info("Received profile picture upload request")
@@ -80,11 +137,24 @@ class ProfileController(
         }
     }
     
-    /**
-     * Delete profile picture
-     */
+    @Operation(
+        summary = "Delete Profile Picture",
+        description = "Remove the user's current profile picture",
+        security = [SecurityRequirement(name = "bearerAuth")]
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Profile picture deleted successfully",
+                content = [Content(schema = Schema(implementation = ProfilePictureResponse::class))]
+            ),
+            ApiResponse(responseCode = "401", description = "Unauthorized")
+        ]
+    )
     @DeleteMapping("/picture")
     fun deleteProfilePicture(
+        @Parameter(description = "JWT access token")
         @RequestHeader("Authorization") authorization: String
     ): ResponseEntity<ProfilePictureResponse> {
         logger.info("Received profile picture deletion request")
