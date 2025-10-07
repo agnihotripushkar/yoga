@@ -2,9 +2,10 @@ package com.devpush.yoga.features.profile.controller
 
 import com.devpush.yoga.features.profile.dto.ProfilePictureResponse
 import com.devpush.yoga.features.profile.dto.ProfileUpdateRequest
-import com.devpush.yoga.features.auth.dto.UserProfile
+import com.devpush.yoga.dto.UserProfile
 import com.devpush.yoga.features.auth.service.JwtTokenManager
 import com.devpush.yoga.service.UserService
+import com.devpush.yoga.service.RateLimitService
 import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
@@ -16,7 +17,8 @@ import org.springframework.web.multipart.MultipartFile
 @RequestMapping("/api/profile")
 class ProfileController(
     private val userService: UserService,
-    private val jwtTokenManager: JwtTokenManager
+    private val jwtTokenManager: JwtTokenManager,
+    private val rateLimitService: RateLimitService
 ) {
     
     private val logger = LoggerFactory.getLogger(ProfileController::class.java)
@@ -33,6 +35,9 @@ class ProfileController(
         
         return try {
             val userId = extractAndValidateUserId(authorization)
+            
+            // Apply rate limiting for profile updates
+            rateLimitService.checkProfileUpdateRateLimit(userId.toString())
             
             val updatedProfile = userService.updateProfile(userId, profileUpdateRequest)
             logger.info("Successfully updated profile for userId: {}", userId)
@@ -56,6 +61,9 @@ class ProfileController(
         
         return try {
             val userId = extractAndValidateUserId(authorization)
+            
+            // Apply rate limiting for file uploads
+            rateLimitService.checkFileUploadRateLimit(userId.toString())
             
             val profilePictureUrl = userService.uploadProfilePicture(userId, file)
             logger.info("Successfully uploaded profile picture for userId: {}", userId)

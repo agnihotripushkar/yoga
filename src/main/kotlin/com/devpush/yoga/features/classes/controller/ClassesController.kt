@@ -2,7 +2,8 @@ package com.devpush.yoga.features.classes.controller
 
 import com.devpush.yoga.features.classes.dto.*
 import com.devpush.yoga.features.classes.service.ClassesService
-import com.devpush.yoga.service.JwtTokenManager
+import com.devpush.yoga.features.auth.service.JwtTokenManager
+import com.devpush.yoga.service.RateLimitService
 import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -13,7 +14,8 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/classes")
 class ClassesController(
     private val classesService: ClassesService,
-    private val jwtTokenManager: JwtTokenManager
+    private val jwtTokenManager: JwtTokenManager,
+    private val rateLimitService: RateLimitService
 ) {
     
     private val logger = LoggerFactory.getLogger(ClassesController::class.java)
@@ -27,6 +29,10 @@ class ClassesController(
         
         return try {
             val userId = extractAndValidateUserId(authorization)
+            
+            // Apply rate limiting for class searches
+            rateLimitService.checkClassSearchRateLimit(userId.toString())
+            
             val classListResponse = classesService.getClasses(searchRequest, userId)
             ResponseEntity.ok(classListResponse)
         } catch (ex: Exception) {
@@ -61,6 +67,10 @@ class ClassesController(
         
         return try {
             val userId = extractAndValidateUserId(authorization)
+            
+            // Apply rate limiting for class searches
+            rateLimitService.checkClassSearchRateLimit(userId.toString())
+            
             val searchResults = classesService.searchClasses(searchRequest, userId)
             ResponseEntity.ok(searchResults)
         } catch (ex: Exception) {

@@ -61,9 +61,25 @@ class SecurityConfig(
                         "/error"
                     ).permitAll()
                     
-                    // File upload endpoints require authentication
+                    // Profile management endpoints require authentication
                     .requestMatchers(
-                        "/api/profile/picture",
+                        "/api/profile",
+                        "/api/profile/**"
+                    ).authenticated()
+                    
+                    // Progress tracking endpoints require authentication
+                    .requestMatchers(
+                        "/api/progress/**"
+                    ).authenticated()
+                    
+                    // Classes management endpoints require authentication
+                    .requestMatchers(
+                        "/api/classes",
+                        "/api/classes/**"
+                    ).authenticated()
+                    
+                    // File upload and static file endpoints require authentication
+                    .requestMatchers(
                         "/uploads/**"
                     ).authenticated()
                     
@@ -89,9 +105,12 @@ class SecurityConfig(
         // Allow requests from mobile app origins
         configuration.allowedOriginPatterns = listOf(
             "http://localhost:*",  // Development
+            "https://localhost:*",  // HTTPS development
             "https://*.devpush.com",  // Production domains
             "capacitor://localhost",  // Capacitor mobile apps
-            "ionic://localhost"  // Ionic mobile apps
+            "ionic://localhost",  // Ionic mobile apps
+            "file://*",  // Mobile app file protocol
+            "app://*"  // Mobile app protocol
         )
         
         // Allow common HTTP methods

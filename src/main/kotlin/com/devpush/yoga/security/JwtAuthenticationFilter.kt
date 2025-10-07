@@ -1,6 +1,6 @@
 package com.devpush.yoga.security
 
-import com.devpush.yoga.service.JwtTokenManager
+import com.devpush.yoga.features.auth.service.JwtTokenManager
 import com.devpush.yoga.service.UserService
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
@@ -25,6 +25,14 @@ class JwtAuthenticationFilter(
     companion object {
         private const val AUTHORIZATION_HEADER = "Authorization"
         private const val BEARER_PREFIX = "Bearer "
+        
+        private val PUBLIC_ENDPOINTS = setOf(
+            "/api/auth/google/login",
+            "/api/auth/apple/login",
+            "/api/auth/refresh",
+            "/actuator/health",
+            "/error"
+        )
     }
     
     override fun doFilterInternal(
@@ -33,13 +41,19 @@ class JwtAuthenticationFilter(
         filterChain: FilterChain
     ) {
         try {
+            // Skip JWT processing for public endpoints
+            if (isPublicEndpoint(request.requestURI)) {
+                filterChain.doFilter(request, response)
+                return
+            }
+            
             val jwt = extractJwtFromRequest(request)
             
             if (jwt != null && SecurityContextHolder.getContext().authentication == null) {
                 authenticateUser(jwt, request)
             }
         } catch (ex: Exception) {
-            logger.error("Cannot set user authentication", ex)
+            logger.error("Cannot set user authentication for ${request.requestURI}", ex)
             // Clear security context on error
             SecurityContextHolder.clearContext()
         }
@@ -97,6 +111,15 @@ class JwtAuthenticationFilter(
         } else {
             logger.debug("Invalid or expired JWT token")
         }
+    }
+    
+    /**
+     * Check if the request URI is a public endpoint that doesn't require authentication
+     */
+    private fun isPublicEndpoint(requestUri: String): Boolean {
+        return PUBLIC_ENDPOINTS.contains(requestUri) || 
+               requestUri.startsWith("/actuator/") ||
+               requestUri == "/error"
     }
     
     /**

@@ -3,6 +3,7 @@ package com.devpush.yoga.features.progress.controller
 import com.devpush.yoga.features.progress.dto.*
 import com.devpush.yoga.features.progress.service.ProgressService
 import com.devpush.yoga.features.auth.service.JwtTokenManager
+import com.devpush.yoga.service.RateLimitService
 import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -13,7 +14,8 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/progress")
 class ProgressController(
     private val progressService: ProgressService,
-    private val jwtTokenManager: JwtTokenManager
+    private val jwtTokenManager: JwtTokenManager,
+    private val rateLimitService: RateLimitService
 ) {
     
     private val logger = LoggerFactory.getLogger(ProgressController::class.java)
@@ -53,6 +55,9 @@ class ProgressController(
         return try {
             val userId = extractAndValidateUserId(authorization)
             
+            // Apply rate limiting for progress queries
+            rateLimitService.checkProgressQueryRateLimit(userId.toString())
+            
             val progressSummary = progressService.getProgressSummary(userId)
             logger.debug("Successfully retrieved progress summary for userId: {}", userId)
             
@@ -75,6 +80,9 @@ class ProgressController(
         
         return try {
             val userId = extractAndValidateUserId(authorization)
+            
+            // Apply rate limiting for progress queries
+            rateLimitService.checkProgressQueryRateLimit(userId.toString())
             
             // Validate week offset
             if (weekOffset < 0) {
@@ -106,6 +114,9 @@ class ProgressController(
         
         return try {
             val userId = extractAndValidateUserId(authorization)
+            
+            // Apply rate limiting for progress queries
+            rateLimitService.checkProgressQueryRateLimit(userId.toString())
             
             // Validate month offset
             if (monthOffset < 0) {

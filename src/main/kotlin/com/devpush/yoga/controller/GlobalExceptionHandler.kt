@@ -8,6 +8,9 @@ import com.devpush.yoga.service.GoogleTokenValidationException
 import com.devpush.yoga.service.AppleTokenValidationException
 import com.devpush.yoga.exception.RateLimitExceededException
 import com.devpush.yoga.exception.FileUploadException
+import com.devpush.yoga.exception.ProfileException
+import com.devpush.yoga.exception.ProgressException
+import com.devpush.yoga.exception.ClassException
 import com.devpush.yoga.util.SecurityLogger
 import io.jsonwebtoken.ExpiredJwtException
 import io.jsonwebtoken.JwtException
@@ -455,6 +458,112 @@ class GlobalExceptionHandler {
         val errorResponse = ErrorResponse(
             error = ex.errorCode,
             message = ex.message ?: "File upload operation failed",
+            status = httpStatus.value(),
+            timestamp = LocalDateTime.now()
+        )
+        
+        return ResponseEntity.status(httpStatus).body(errorResponse)
+    }
+    
+    /**
+     * Handle profile exceptions with appropriate HTTP status codes
+     */
+    @ExceptionHandler(ProfileException::class)
+    fun handleProfileException(ex: ProfileException): ResponseEntity<ErrorResponse> {
+        logger.error("Profile operation error [{}]: {}", ex.errorCode, ex.message)
+        
+        val httpStatus = when (ex.errorCode) {
+            ProfileException.PROFILE_NOT_FOUND -> HttpStatus.NOT_FOUND
+            ProfileException.PROFILE_ACCESS_DENIED -> {
+                SecurityLogger.logSecurityError("PROFILE_ACCESS_DENIED", ex.message ?: "Profile access denied")
+                HttpStatus.FORBIDDEN
+            }
+            ProfileException.INVALID_PROFILE_DATA,
+            ProfileException.BIO_TOO_LONG,
+            ProfileException.INVALID_FITNESS_LEVEL,
+            ProfileException.PREFERENCES_INVALID,
+            ProfileException.PROFILE_VALIDATION_FAILED -> HttpStatus.BAD_REQUEST
+            ProfileException.PROFILE_UPDATE_FAILED,
+            ProfileException.PROFILE_PICTURE_ERROR -> HttpStatus.INTERNAL_SERVER_ERROR
+            else -> HttpStatus.BAD_REQUEST
+        }
+        
+        val errorResponse = ErrorResponse(
+            error = ex.errorCode,
+            message = ex.message ?: "Profile operation failed",
+            status = httpStatus.value(),
+            timestamp = LocalDateTime.now()
+        )
+        
+        return ResponseEntity.status(httpStatus).body(errorResponse)
+    }
+    
+    /**
+     * Handle progress tracking exceptions with appropriate HTTP status codes
+     */
+    @ExceptionHandler(ProgressException::class)
+    fun handleProgressException(ex: ProgressException): ResponseEntity<ErrorResponse> {
+        logger.error("Progress tracking error [{}]: {}", ex.errorCode, ex.message)
+        
+        val httpStatus = when (ex.errorCode) {
+            ProgressException.PROGRESS_DATA_NOT_FOUND,
+            ProgressException.SESSION_NOT_FOUND -> HttpStatus.NOT_FOUND
+            ProgressException.PROGRESS_ACCESS_DENIED -> {
+                SecurityLogger.logSecurityError("PROGRESS_ACCESS_DENIED", ex.message ?: "Progress access denied")
+                HttpStatus.FORBIDDEN
+            }
+            ProgressException.INVALID_SESSION_DATA,
+            ProgressException.INVALID_DURATION,
+            ProgressException.INVALID_CALORIES,
+            ProgressException.DATE_RANGE_INVALID,
+            ProgressException.DUPLICATE_SESSION -> HttpStatus.BAD_REQUEST
+            ProgressException.SESSION_RECORDING_FAILED,
+            ProgressException.ANALYTICS_CALCULATION_FAILED,
+            ProgressException.CALORIE_ESTIMATION_FAILED -> HttpStatus.INTERNAL_SERVER_ERROR
+            else -> HttpStatus.BAD_REQUEST
+        }
+        
+        val errorResponse = ErrorResponse(
+            error = ex.errorCode,
+            message = ex.message ?: "Progress tracking operation failed",
+            status = httpStatus.value(),
+            timestamp = LocalDateTime.now()
+        )
+        
+        return ResponseEntity.status(httpStatus).body(errorResponse)
+    }
+    
+    /**
+     * Handle yoga class exceptions with appropriate HTTP status codes
+     */
+    @ExceptionHandler(ClassException::class)
+    fun handleClassException(ex: ClassException): ResponseEntity<ErrorResponse> {
+        logger.error("Yoga class operation error [{}]: {}", ex.errorCode, ex.message)
+        
+        val httpStatus = when (ex.errorCode) {
+            ClassException.CLASS_NOT_FOUND,
+            ClassException.FAVORITE_NOT_FOUND -> HttpStatus.NOT_FOUND
+            ClassException.CLASS_ACCESS_DENIED -> {
+                SecurityLogger.logSecurityError("CLASS_ACCESS_DENIED", ex.message ?: "Class access denied")
+                HttpStatus.FORBIDDEN
+            }
+            ClassException.INVALID_CLASS_DATA,
+            ClassException.INVALID_SEARCH_CRITERIA,
+            ClassException.INVALID_DIFFICULTY_LEVEL,
+            ClassException.INVALID_DURATION_FILTER,
+            ClassException.PAGINATION_ERROR -> HttpStatus.BAD_REQUEST
+            ClassException.VIDEO_URL_INVALID,
+            ClassException.VIDEO_URL_EXPIRED,
+            ClassException.VIDEO_NOT_ACCESSIBLE -> HttpStatus.UNPROCESSABLE_ENTITY
+            ClassException.FAVORITE_ALREADY_EXISTS -> HttpStatus.CONFLICT
+            ClassException.CLASS_SEARCH_FAILED,
+            ClassException.FAVORITE_OPERATION_FAILED -> HttpStatus.INTERNAL_SERVER_ERROR
+            else -> HttpStatus.BAD_REQUEST
+        }
+        
+        val errorResponse = ErrorResponse(
+            error = ex.errorCode,
+            message = ex.message ?: "Yoga class operation failed",
             status = httpStatus.value(),
             timestamp = LocalDateTime.now()
         )
