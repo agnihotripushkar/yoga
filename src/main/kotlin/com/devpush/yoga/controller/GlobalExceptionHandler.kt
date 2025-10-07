@@ -7,6 +7,7 @@ import com.devpush.yoga.service.LogoutException
 import com.devpush.yoga.service.GoogleTokenValidationException
 import com.devpush.yoga.service.AppleTokenValidationException
 import com.devpush.yoga.exception.RateLimitExceededException
+import com.devpush.yoga.exception.FileUploadException
 import com.devpush.yoga.util.SecurityLogger
 import io.jsonwebtoken.ExpiredJwtException
 import io.jsonwebtoken.JwtException
@@ -426,6 +427,39 @@ class GlobalExceptionHandler {
         )
         
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse)
+    }
+    
+    /**
+     * Handle file upload exceptions with appropriate HTTP status codes
+     */
+    @ExceptionHandler(FileUploadException::class)
+    fun handleFileUploadException(ex: FileUploadException): ResponseEntity<ErrorResponse> {
+        logger.error("File upload error [{}]: {}", ex.errorCode, ex.message)
+        
+        val httpStatus = when (ex.errorCode) {
+            FileUploadException.FILE_TOO_LARGE -> HttpStatus.PAYLOAD_TOO_LARGE
+            FileUploadException.INVALID_FILE_TYPE -> HttpStatus.UNSUPPORTED_MEDIA_TYPE
+            FileUploadException.FILE_EMPTY, 
+            FileUploadException.INVALID_FILE_NAME -> HttpStatus.BAD_REQUEST
+            FileUploadException.SECURITY_VIOLATION -> {
+                SecurityLogger.logSecurityError("FILE_SECURITY_VIOLATION", ex.message ?: "File security violation")
+                HttpStatus.BAD_REQUEST
+            }
+            FileUploadException.STORAGE_ERROR,
+            FileUploadException.CLEANUP_ERROR -> HttpStatus.INTERNAL_SERVER_ERROR
+            "FILE_NOT_FOUND" -> HttpStatus.NOT_FOUND
+            "FILE_ACCESS_DENIED" -> HttpStatus.FORBIDDEN
+            else -> HttpStatus.BAD_REQUEST
+        }
+        
+        val errorResponse = ErrorResponse(
+            error = ex.errorCode,
+            message = ex.message ?: "File upload operation failed",
+            status = httpStatus.value(),
+            timestamp = LocalDateTime.now()
+        )
+        
+        return ResponseEntity.status(httpStatus).body(errorResponse)
     }
     
     /**
