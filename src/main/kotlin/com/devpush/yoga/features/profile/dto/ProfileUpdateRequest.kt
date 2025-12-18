@@ -7,8 +7,16 @@ data class ProfileUpdateRequest(
     @field:Size(max = 100, message = "Name cannot exceed 100 characters")
     val name: String? = null,
     
+    @field:Size(max = 100, message = "Display Name cannot exceed 100 characters")
+    val displayName: String? = null,
+    
     @field:Size(max = 500, message = "Bio cannot exceed 500 characters")
     val bio: String? = null,
+    
+    val sex: String? = null,
+    val height: Float? = null,
+    val weight: Float? = null,
+    val level: Int? = null,
     
     val fitnessLevel: FitnessLevel? = null,
     

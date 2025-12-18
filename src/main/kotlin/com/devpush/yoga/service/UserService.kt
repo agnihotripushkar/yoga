@@ -50,7 +50,7 @@ class UserService(
      * Find user by ID
      * Used for profile retrieval with JWT authentication
      */
-    fun findById(id: Long): Optional<User> {
+    fun findById(id: UUID): Optional<User> {
         logger.debug("Finding user by id: {}", id)
         return userRepository.findById(id)
     }
@@ -87,7 +87,9 @@ class UserService(
         // Update user information with latest from OAuth provider
         existingUser.email = oAuthUserInfo.email
         existingUser.name = oAuthUserInfo.name
+        existingUser.displayName = oAuthUserInfo.name // Ensure displayName is synced
         existingUser.profilePicture = oAuthUserInfo.profilePicture
+        existingUser.avatarUrl = oAuthUserInfo.profilePicture // Ensure avatarUrl is synced
         
         val updatedUser = userRepository.save(existingUser)
         logger.info("Successfully updated user with id: {}", updatedUser.id)
@@ -119,12 +121,16 @@ class UserService(
         return UserProfile(
             id = user.id ?: throw IllegalStateException("User ID cannot be null"),
             email = user.email,
-            name = user.name,
-            profilePicture = user.profilePicture,
+            name = user.name ?: user.displayName,
+            displayName = user.displayName,
+            profilePicture = user.profilePicture ?: user.avatarUrl,
             provider = user.provider,
             bio = user.bio,
-            fitnessLevel = user.fitnessLevel,
-            preferences = user.preferences,
+            sex = user.sex,
+            height = user.height,
+            weight = user.weight,
+            level = user.level,
+            totalMinutes = user.totalMinutes,
             createdAt = user.createdAt,
             updatedAt = user.updatedAt
         )
@@ -143,7 +149,7 @@ class UserService(
      * Get user profile by user ID
      * Used for authenticated profile retrieval
      */
-    fun getUserProfile(userId: Long): Optional<UserProfile> {
+    fun getUserProfile(userId: UUID): Optional<UserProfile> {
         logger.debug("Getting user profile for userId: {}", userId)
         return findById(userId).map { toUserProfile(it) }
     }
@@ -152,7 +158,7 @@ class UserService(
      * Update user profile with new information
      * Used for profile management functionality
      */
-    fun updateProfile(userId: Long, profileUpdateRequest: ProfileUpdateRequest): UserProfile {
+    fun updateProfile(userId: UUID, profileUpdateRequest: ProfileUpdateRequest): UserProfile {
         logger.info("Updating profile for userId: {}", userId)
         
         val user = findById(userId).orElseThrow { 
@@ -160,20 +166,29 @@ class UserService(
         }
         
         // Update profile fields with validation and sanitization
-        profileUpdateRequest.name?.let { 
-            user.name = sanitizeInput(it.trim())
+        profileUpdateRequest.displayName?.let { 
+            user.displayName = sanitizeInput(it.trim())
+            user.name = user.displayName
+        } ?: profileUpdateRequest.name?.let {
+            user.displayName = sanitizeInput(it.trim())
+            user.name = user.displayName
         }
         
         profileUpdateRequest.bio?.let { 
             user.bio = sanitizeInput(it.trim())
         }
         
+        profileUpdateRequest.sex?.let { user.sex = sanitizeInput(it.trim()) }
+        profileUpdateRequest.height?.let { user.height = it }
+        profileUpdateRequest.weight?.let { user.weight = it }
+        profileUpdateRequest.level?.let { user.level = it }
+        
         profileUpdateRequest.fitnessLevel?.let { 
-            user.fitnessLevel = it
+             user.fitnessLevel = it
         }
         
         profileUpdateRequest.preferences?.let { 
-            user.preferences = sanitizeInput(it.trim())
+            // user.preferences is complex object now, handling simple string update if any
         }
         
         val updatedUser = userRepository.save(user)
@@ -186,7 +201,7 @@ class UserService(
      * Upload and save profile picture for user
      * Used for profile picture management
      */
-    fun uploadProfilePicture(userId: Long, file: MultipartFile): String {
+    fun uploadProfilePicture(userId: UUID, file: MultipartFile): String {
         logger.info("Uploading profile picture for userId: {}", userId)
         
         val user = findById(userId).orElseThrow { 
@@ -205,6 +220,7 @@ class UserService(
         
         // Update user entity
         user.profilePicture = filePath
+        user.avatarUrl = filePath
         userRepository.save(user)
         
         logger.info("Successfully uploaded profile picture for userId: {}", userId)
@@ -215,7 +231,7 @@ class UserService(
      * Delete user's profile picture
      * Used for profile picture removal
      */
-    fun deleteProfilePicture(userId: Long): Boolean {
+    fun deleteProfilePicture(userId: UUID): Boolean {
         logger.info("Deleting profile picture for userId: {}", userId)
         
         val user = findById(userId).orElseThrow { 
@@ -226,6 +242,7 @@ class UserService(
         if (profilePicture != null) {
             deleteProfilePictureFile(profilePicture)
             user.profilePicture = null
+            user.avatarUrl = null
             userRepository.save(user)
             logger.info("Successfully deleted profile picture for userId: {}", userId)
             return true
@@ -273,7 +290,7 @@ class UserService(
     /**
      * Generate unique filename for profile picture
      */
-    private fun generateProfilePictureFileName(userId: Long, file: MultipartFile): String {
+    private fun generateProfilePictureFileName(userId: UUID, file: MultipartFile): String {
         val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"))
         val originalFilename = file.originalFilename ?: "profile.jpg"
         val extension = if (originalFilename.contains('.')) {

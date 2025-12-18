@@ -31,7 +31,7 @@ class ProgressService(
     /**
      * Record a completed yoga session for a user
      */
-    fun recordSession(userId: Long, sessionRequest: SessionRecordRequest): SessionResponse {
+    fun recordSession(userId: UUID, sessionRequest: SessionRecordRequest): SessionResponse {
         logger.info("Recording session for userId: {}", userId)
         
         val user = userRepository.findById(userId).orElseThrow {
@@ -55,6 +55,8 @@ class ProgressService(
             yogaClass = yogaClass,
             durationMinutes = sessionRequest.durationMinutes,
             caloriesBurned = calories,
+            classType = sessionRequest.classType,
+            completed = sessionRequest.completed,
             notes = sessionRequest.notes
         )
         
@@ -67,7 +69,7 @@ class ProgressService(
     /**
      * Get overall progress summary for a user
      */
-    fun getProgressSummary(userId: Long): ProgressSummary {
+    fun getProgressSummary(userId: UUID): ProgressSummary {
         logger.debug("Getting progress summary for userId: {}", userId)
         
         val user = userRepository.findById(userId).orElseThrow {
@@ -108,7 +110,7 @@ class ProgressService(
     /**
      * Get weekly progress data for a user
      */
-    fun getWeeklyProgress(userId: Long, weekOffset: Int = 0): WeeklyProgress {
+    fun getWeeklyProgress(userId: UUID, weekOffset: Int = 0): WeeklyProgress {
         logger.debug("Getting weekly progress for userId: {} with offset: {}", userId, weekOffset)
         
         val user = userRepository.findById(userId).orElseThrow {
@@ -173,7 +175,7 @@ class ProgressService(
     /**
      * Get monthly progress data for a user
      */
-    fun getMonthlyProgress(userId: Long, monthOffset: Int = 0): MonthlyProgress {
+    fun getMonthlyProgress(userId: UUID, monthOffset: Int = 0): MonthlyProgress {
         logger.debug("Getting monthly progress for userId: {} with offset: {}", userId, monthOffset)
         
         val user = userRepository.findById(userId).orElseThrow {
@@ -264,6 +266,7 @@ class ProgressService(
             DifficultyLevel.BEGINNER -> 3.0      // Gentle yoga
             DifficultyLevel.INTERMEDIATE -> 4.5   // Hatha/Vinyasa yoga
             DifficultyLevel.ADVANCED -> 6.0      // Power/Ashtanga yoga
+            DifficultyLevel.EXPERT -> 7.5        // Advanced logic
             null -> 4.0                          // Default moderate intensity
         }
         
@@ -342,7 +345,7 @@ class ProgressService(
     private fun toSessionResponse(session: YogaSession): SessionResponse {
         val yogaClassInfo = session.yogaClass?.let { yogaClass ->
             SessionYogaClassInfo(
-                id = yogaClass.id ?: 0,
+                id = yogaClass.id ?: throw IllegalStateException("Class ID cannot be null"),
                 title = yogaClass.title,
                 instructor = yogaClass.instructor,
                 difficultyLevel = yogaClass.difficultyLevel.name
@@ -350,9 +353,11 @@ class ProgressService(
         }
         
         return SessionResponse(
-            id = session.id ?: 0,
+            id = session.id ?: throw IllegalStateException("Session ID cannot be null"),
             durationMinutes = session.durationMinutes,
             caloriesBurned = session.caloriesBurned,
+            classType = session.classType,
+            completed = session.completed,
             completedAt = session.completedAt ?: LocalDateTime.now(),
             notes = session.notes,
             yogaClass = yogaClassInfo

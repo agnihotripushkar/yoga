@@ -4,12 +4,17 @@ import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
 
+import java.util.UUID
+
 data class SessionRecordRequest(
     @field:NotNull(message = "Duration is required")
     @field:Min(value = 1, message = "Duration must be at least 1 minute")
     val durationMinutes: Int,
     
-    val classId: Long? = null,
+    val classId: UUID? = null,
+    
+    val classType: String? = null,
+    val completed: Boolean = true,
     
     @field:Min(value = 0, message = "Calories burned cannot be negative")
     val caloriesBurned: Int? = null,

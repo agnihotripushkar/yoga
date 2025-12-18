@@ -1,32 +1,44 @@
-# Yoga Authentication API
+# YogSadhna Backend API
 
-A secure Spring Boot backend service providing OAuth authentication for a Yoga application. This service supports Google and Apple Sign-In with JWT token management, rate limiting, and comprehensive user profile management.
+A secure Spring Boot backend service for the YogSadhna application, providing comprehensive features for yoga practice, wellness tracking, and personalized diet plans. This service supports OAuth authentication (Google/Apple), JWT token management, and extensive user profile capabilities.
 
 ## 🚀 Features
 
+### Core Features
 - **OAuth Authentication**: Google and Apple Sign-In integration
-- **JWT Token Management**: Secure access and refresh token handling
-- **Rate Limiting**: IP-based authentication rate limiting
-- **User Profile Management**: Complete user profile CRUD operations
-- **Security**: Spring Security integration with custom authentication
-- **Validation**: Request validation with detailed error messages
-- **Logging**: Comprehensive logging for monitoring and debugging
+- **JWT Token Management**: Secure access and refresh token handling with UUID support
+- **Rate Limiting**: IP and User-based rate limiting for API protection
+- **User Profile Management**: Complete user profile CRUD operations with extended stats (height, weight, level)
+- **Security**: Spring Security integration with custom authentication and input sanitization
+
+### Yoga Features
+- **Class Management**: Browse and search yoga classes with filters (difficulty, duration)
+- **Session Tracking**: Record completed sessions with calories burned and duration
+- **Progress Analytics**: Weekly and monthly progress summaries
+- **Favorites**: Bookmark favorite classes
+
+### New Features (v2.0)
+- **Wellness Tracking**: Log daily health metrics (weight, heart rate, hydration, sleep, mood)
+- **AI Diet Plans**: Generate personalized 7-day meal plans based on goals (Weight Loss, Muscle Build) and dietary preferences
+- **Extended Profile**: Detailed user statistics including total practice minutes and level progression
 
 ## 🛠️ Tech Stack
 
-- **Language**: Kotlin
-- **Framework**: Spring Boot 3.5.6
+- **Language**: Kotlin 1.9.22
+- **Framework**: Spring Boot 3.2.1
 - **Security**: Spring Security + JWT
-- **Database**: H2 (development), JPA/Hibernate
+- **Database**: PostgreSQL (Production) / H2 (Development)
+- **AI Integration**: Google Gemini API (for Diet Plans)
 - **Build Tool**: Gradle
-- **Java Version**: 21
+- **Java Version**: 17+
 
 ## 📋 Prerequisites
 
-- Java 21 or higher
+- Java 17 or higher
 - Gradle 7.0+ (or use included wrapper)
-- Google OAuth 2.0 credentials (for Google Sign-In)
-- Apple Developer account and Sign in with Apple setup
+- Google OAuth 2.0 credentials
+- Apple Developer account (for Apple Sign-In)
+- Google Gemini API Key (for AI features)
 
 ## 🔧 Installation & Setup
 
@@ -36,10 +48,24 @@ A secure Spring Boot backend service providing OAuth authentication for a Yoga a
    cd yoga
    ```
 
-2. **Configure OAuth credentials**
-   Create `application.yml` or `application.properties` with your OAuth settings:
-   ```yaml
-   # Add your Google and Apple OAuth configurations here
+2. **Configure Environment Variables**
+   Create `application.properties` or set environment variables:
+   ```properties
+   # OAuth
+   SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID=your_google_client_id
+   SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_APPLE_CLIENT_ID=your_apple_client_id
+   
+   # JWT
+   JWT_SECRET=your_jwt_secret_key_must_be_long_enough
+   JWT_EXPIRATION_MS=86400000
+   
+   # Database
+   SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/yoga_db
+   SPRING_DATASOURCE_USERNAME=postgres
+   SPRING_DATASOURCE_PASSWORD=password
+   
+   # AI
+   GEMINI_API_KEY=your_gemini_api_key
    ```
 
 3. **Build the project**
@@ -54,46 +80,56 @@ A secure Spring Boot backend service providing OAuth authentication for a Yoga a
 
 The application will start on `http://localhost:8080`
 
-## 📚 API Documentation
+## 📚 API Overview
 
-For detailed API documentation with request/response examples, see [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
+The application comes with fully interactive Swagger/OpenAPI documentation.
 
-### Quick API Overview
+**Swagger UI**: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)  
+**OpenAPI JSON**: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
 
+For static detailed documentation, see [API_DOCUMENTATION.md](./API_DOCUMENTATION.md).
+
+### Authentication
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/auth/google/login` | POST | Google OAuth login |
-| `/api/auth/apple/login` | POST | Apple OAuth login |
-| `/api/auth/refresh` | POST | Refresh JWT tokens |
-| `/api/auth/logout` | POST | Logout and revoke tokens |
-| `/api/auth/profile` | GET | Get user profile |
+| `/api/auth/profile` | GET | Get user profile (UUID based) |
 
-## 🔐 Authentication Flow
+### Yoga Classes
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/classes` | GET | List classes with filters |
+| `/api/classes/{id}` | GET | Get class details (UUID) |
+| `/api/classes/favorites` | GET | Get user favorites |
 
-1. **Login**: Client sends OAuth ID token to `/google/login` or `/apple/login`
-2. **Token Validation**: Server validates the OAuth token with provider
-3. **JWT Generation**: Server generates access and refresh tokens
-4. **API Access**: Client uses access token for authenticated requests
-5. **Token Refresh**: Client uses refresh token to get new access tokens
-6. **Logout**: Client revokes refresh token
+### Progress & Wellness
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/progress/session` | POST | Record a yoga session |
+| `/api/progress/summary` | GET | Get user progress stats |
+| `/api/wellness/log` | POST | Log daily health metrics |
+| `/api/wellness/history` | GET | Get health history |
+
+### AI Diet
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/diet/generate` | POST | Generate AI diet plan |
+| `/api/diet/active` | GET | Get current diet plan |
 
 ## 🏗️ Project Structure
 
 ```
 src/main/kotlin/com/devpush/yoga/
-├── controller/          # REST controllers
-│   └── AuthController.kt
-├── dto/                # Data Transfer Objects
-│   ├── AuthResponse.kt
-│   ├── GoogleLoginRequest.kt
-│   ├── AppleLoginRequest.kt
-│   ├── RefreshTokenRequest.kt
-│   └── UserProfile.kt
-├── entity/             # JPA entities
-│   └── OAuthProvider.kt
-├── service/            # Business logic services
-├── util/              # Utility classes
-└── config/            # Configuration classes
+├── features/
+│   ├── auth/           # Authentication & User features
+│   ├── classes/        # Yoga Class management
+│   ├── progress/       # Session tracking & stats
+│   ├── wellness/       # Health tracking features
+│   └── diet/           # AI Diet features
+├── entity/             # JPA entities (UUID based)
+├── repository/         # Data access layer
+├── service/            # Business logic
+└── config/             # Configuration classes
 ```
 
 ## 🧪 Testing
@@ -105,19 +141,9 @@ Run tests with:
 
 ## 🔒 Security Features
 
-- **Rate Limiting**: Prevents brute force attacks
-- **JWT Validation**: Secure token-based authentication
-- **OAuth Integration**: Leverages trusted identity providers
-- **Input Validation**: Comprehensive request validation
-- **Error Handling**: Secure error responses without sensitive data leakage
-
-## 📊 Monitoring & Logging
-
-The application includes comprehensive logging for:
-- Authentication attempts and results
-- Token operations (generation, refresh, revocation)
-- Rate limiting events
-- Error conditions and exceptions
+- **UUIDs**: All primary keys migrated to UUIDs to prevent enumeration attacks.
+- **Role-Based Access**: Granular permissions.
+- **Input Sanitization**: Protection against injection attacks.
 
 ## 🤝 Contributing
 
@@ -130,7 +156,3 @@ The application includes comprehensive logging for:
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 📞 Support
-
-For support and questions, please open an issue in the GitHub repository.

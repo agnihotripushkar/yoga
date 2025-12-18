@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.UpdateTimestamp
 import java.time.LocalDateTime
+import java.util.UUID
 
 @Entity
 @Table(
@@ -18,17 +19,32 @@ import java.time.LocalDateTime
 )
 data class User(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
+    @GeneratedValue(strategy = GenerationType.UUID)
+    var id: UUID? = null,
     
     @Email
     @NotBlank
     @Column(nullable = false)
     var email: String,
     
-    var name: String? = null,
+    // Mapped to display_name in DB as per PRD
+    @Column(name = "display_name")
+    var displayName: String? = null,
+
+    // Keeping name as alias or legacy if needed, but mapped to name column for now if not display_name
+    // PRD only mentions display_name. I'll map 'name' to 'display_name' or keep both?
+    // Existing code uses 'name'. I will deprecate 'name' and use 'displayName' as primary.
+    // Or simpler: Rename 'name' to 'displayName' if I can refactor all usages. 
+    // For now I will add displayName and sync them or just use displayName.
+    // Let's use displayName.
+    @Transient
+    var name: String? = null, 
     
     @Column(name = "profile_picture", length = 500)
+    var avatarUrl: String? = null,
+
+    // Legacy mapped field, alias to avatarUrl for compatibility
+    @Transient
     var profilePicture: String? = null,
     
     @Enumerated(EnumType.STRING)
@@ -40,18 +56,26 @@ data class User(
     @Column(name = "provider_id", nullable = false)
     var providerId: String,
     
-    // New profile fields
+    // New PRD fields
+    var sex: String? = null,
+    var height: Float? = null,
+    var weight: Float? = null,
+    var level: Int? = null, // Experience level 1-5
+    
+    @Column(name = "total_minutes")
+    var totalMinutes: Long = 0,
+
+    @OneToOne(mappedBy = "user", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    var preferences: UserPreferences? = null,
+    
     @Size(max = 500, message = "Bio cannot exceed 500 characters")
     @Column(length = 500)
     var bio: String? = null,
     
+    // Deprecate logic or remove
     @Enumerated(EnumType.STRING)
     @Column(name = "fitness_level")
     var fitnessLevel: FitnessLevel? = null,
-    
-    @Size(max = 1000, message = "Preferences cannot exceed 1000 characters")
-    @Column(length = 1000)
-    var preferences: String? = null,
     
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -67,7 +91,24 @@ data class User(
         provider = OAuthProvider.GOOGLE,
         providerId = "",
         bio = null,
-        fitnessLevel = null,
-        preferences = null
+        fitnessLevel = null
     )
+
+    // Helper for name/displayName backward compatibility
+    @PostLoad
+    fun syncFields() {
+        this.name = this.displayName
+        this.profilePicture = this.avatarUrl
+    }
+
+    @PrePersist
+    @PreUpdate
+    fun syncToDb() {
+        if (this.displayName == null && this.name != null) {
+            this.displayName = this.name
+        }
+        if (this.avatarUrl == null && this.profilePicture != null) {
+            this.avatarUrl = this.profilePicture
+        }
+    }
 }

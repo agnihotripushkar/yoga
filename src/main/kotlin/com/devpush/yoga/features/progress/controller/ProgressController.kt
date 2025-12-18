@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.util.UUID
 
 @RestController
 @RequestMapping("/api/progress")
@@ -45,12 +46,12 @@ class ProgressController(
                     examples = [ExampleObject(
                         value = """
                         {
-                          "id": 123,
+                          "id": "123e4567-e89b-12d3-a456-426614174000",
                           "durationMinutes": 45,
                           "caloriesBurned": 180,
                           "completedAt": "2024-01-15T10:30:00Z",
                           "yogaClass": {
-                            "id": 1,
+                            "id": "123e4567-e89b-12d3-a456-426614174001",
                             "title": "Morning Flow"
                           }
                         }
@@ -226,7 +227,7 @@ class ProgressController(
     /**
      * Extract and validate user ID from JWT token
      */
-    private fun extractAndValidateUserId(authorization: String): Long {
+    private fun extractAndValidateUserId(authorization: String): UUID {
         // Extract JWT token from Authorization header
         val token = extractTokenFromHeader(authorization)
             ?: throw RuntimeException("Invalid authorization header format")
