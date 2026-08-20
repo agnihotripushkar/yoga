@@ -164,5 +164,5 @@ interface ClassFavoriteRepository : JpaRepository<ClassFavorite, Long> {
         AND cf.yogaClass.id IN :classIds
     """)
     @QueryHints(QueryHint(name = "org.hibernate.cacheable", value = "true"))
-    fun findFavoritedClassIds(@Param("user") user: User, @Param("classIds") classIds: List<Long>): List<Long>
+    fun findFavoritedClassIds(@Param("user") user: User, @Param("classIds") classIds: List<UUID>): List<UUID>
 }

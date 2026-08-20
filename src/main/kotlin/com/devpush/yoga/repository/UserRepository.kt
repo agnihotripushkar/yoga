@@ -15,7 +15,7 @@ import java.util.*
 import jakarta.persistence.QueryHint
 
 @Repository
-interface UserRepository : JpaRepository<User, Long> {
+interface UserRepository : JpaRepository<User, UUID> {
     
     // Find user by OAuth provider and provider ID (optimized with composite index)
     @QueryHints(QueryHint(name = "org.hibernate.cacheable", value = "true"))

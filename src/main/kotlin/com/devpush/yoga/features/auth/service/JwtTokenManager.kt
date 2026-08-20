@@ -79,9 +79,9 @@ class JwtTokenManager(
     /**
      * Extract user ID from a valid JWT token
      */
-    fun getUserIdFromToken(token: String): Long? {
+    fun getUserIdFromToken(token: String): UUID? {
         val claims = validateToken(token)
-        return claims?.subject?.toLongOrNull()
+        return claims?.subject?.let { try { UUID.fromString(it) } catch (e: Exception) { null } }
     }
     
     /**
@@ -134,7 +134,7 @@ class JwtTokenManager(
             return null
         }
         
-        val userId = claims.subject?.toLongOrNull() ?: return null
+        val userId = claims.subject?.let { try { UUID.fromString(it) } catch (e: Exception) { null } } ?: return null
         val email = claims.get("email", String::class.java) ?: return null
         val name = claims.get("name", String::class.java)
         val provider = claims.get("provider", String::class.java)
@@ -151,7 +151,7 @@ class JwtTokenManager(
      * Data class to hold user information extracted from JWT token
      */
     data class UserTokenInfo(
-        val id: Long,
+        val id: UUID,
         val email: String,
         val name: String?,
         val provider: String?

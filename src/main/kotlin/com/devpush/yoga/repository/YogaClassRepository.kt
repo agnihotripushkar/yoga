@@ -11,8 +11,10 @@ import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import jakarta.persistence.QueryHint
 
+import java.util.UUID
+
 @Repository
-interface YogaClassRepository : JpaRepository<YogaClass, Long> {
+interface YogaClassRepository : JpaRepository<YogaClass, UUID> {
     
     // Optimized difficulty level query using index
     @QueryHints(QueryHint(name = "org.hibernate.cacheable", value = "true"))

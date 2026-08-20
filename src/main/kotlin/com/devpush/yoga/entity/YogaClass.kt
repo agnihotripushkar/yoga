@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Size
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.UpdateTimestamp
 import java.time.LocalDateTime
+import java.util.UUID
 
 @Entity
 @Table(
@@ -22,8 +23,8 @@ import java.time.LocalDateTime
 )
 data class YogaClass(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
+    @GeneratedValue(strategy = GenerationType.UUID)
+    var id: UUID? = null,
     
     @NotBlank(message = "Title is required")
     @Size(max = 200, message = "Title cannot exceed 200 characters")
@@ -61,6 +62,14 @@ data class YogaClass(
     )
     @Column(name = "thumbnail_url", length = 500)
     val thumbnailUrl: String? = null,
+
+    @Column(name = "is_youtube")
+    var isYoutube: Boolean = false,
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "yoga_class_tags", joinColumns = [JoinColumn(name = "class_id")])
+    @Column(name = "tag")
+    var tags: MutableSet<String> = mutableSetOf(),
     
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

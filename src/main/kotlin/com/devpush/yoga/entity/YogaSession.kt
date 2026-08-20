@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotNull
 import org.hibernate.annotations.CreationTimestamp
 import java.time.LocalDateTime
+import java.util.UUID
 
 @Entity
 @Table(
@@ -17,8 +18,8 @@ import java.time.LocalDateTime
 )
 data class YogaSession(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
+    @GeneratedValue(strategy = GenerationType.UUID)
+    var id: UUID? = null,
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -37,6 +38,11 @@ data class YogaSession(
     @Column(name = "calories_burned")
     val caloriesBurned: Int? = null,
     
+    @Column(name = "class_type")
+    var classType: String? = null,
+
+    var completed: Boolean = false,
+
     @CreationTimestamp
     @Column(name = "completed_at", nullable = false, updatable = false)
     val completedAt: LocalDateTime? = null,

@@ -2,7 +2,7 @@ package com.devpush.yoga.features.profile.controller
 
 import com.devpush.yoga.features.profile.dto.ProfilePictureResponse
 import com.devpush.yoga.features.profile.dto.ProfileUpdateRequest
-import com.devpush.yoga.dto.UserProfile
+import com.devpush.yoga.features.auth.dto.UserProfile
 import com.devpush.yoga.features.auth.service.JwtTokenManager
 import com.devpush.yoga.service.UserService
 import com.devpush.yoga.service.RateLimitService

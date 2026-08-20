@@ -8,8 +8,10 @@ data class FavoriteResponse(
     val isFavorite: Boolean
 )
 
+import java.util.UUID
+
 data class FavoriteClassResponse(
-    val id: Long,
+    val id: UUID,
     val title: String,
     val description: String?,
     val durationMinutes: Int,

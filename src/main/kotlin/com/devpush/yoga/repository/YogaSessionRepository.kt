@@ -12,8 +12,10 @@ import org.springframework.data.jpa.repository.QueryHints
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 
+import java.util.UUID
+
 @Repository
-interface YogaSessionRepository : JpaRepository<YogaSession, Long> {
+interface YogaSessionRepository : JpaRepository<YogaSession, UUID> {
 
     // Optimized query with pagination support for large datasets
     fun findByUserOrderByCompletedAtDesc(user: User, pageable: Pageable): Page<YogaSession>

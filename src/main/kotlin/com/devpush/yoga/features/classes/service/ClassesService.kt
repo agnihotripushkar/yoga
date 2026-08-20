@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.net.URL
 import java.time.LocalDateTime
+import java.util.UUID
 
 @Service
 @Transactional
@@ -29,7 +30,7 @@ class ClassesService(
     /**
      * Get all classes with pagination and filtering
      */
-    fun getClasses(searchRequest: ClassSearchRequest, userId: Long): ClassListResponse {
+    fun getClasses(searchRequest: ClassSearchRequest, userId: UUID): ClassListResponse {
         logger.debug("Getting classes with filters for userId: {}", userId)
         
         val user = getUserById(userId)
@@ -71,7 +72,7 @@ class ClassesService(
     /**
      * Get a specific class by ID
      */
-    fun getClassById(classId: Long, userId: Long): YogaClassResponse {
+    fun getClassById(classId: UUID, userId: UUID): YogaClassResponse {
         logger.debug("Getting class with id: {} for userId: {}", classId, userId)
         
         val yogaClass = yogaClassRepository.findById(classId).orElseThrow {
@@ -87,7 +88,7 @@ class ClassesService(
     /**
      * Search classes by text query
      */
-    fun searchClasses(searchRequest: ClassSearchRequest, userId: Long): ClassListResponse {
+    fun searchClasses(searchRequest: ClassSearchRequest, userId: UUID): ClassListResponse {
         logger.debug("Searching classes with query: '{}' for userId: {}", searchRequest.query, userId)
         
         val user = getUserById(userId)
@@ -127,7 +128,7 @@ class ClassesService(
     /**
      * Add a class to user's favorites
      */
-    fun addToFavorites(classId: Long, userId: Long): FavoriteResponse {
+    fun addToFavorites(classId: UUID, userId: UUID): FavoriteResponse {
         logger.info("Adding class {} to favorites for userId: {}", classId, userId)
         
         val user = getUserById(userId)
@@ -163,7 +164,7 @@ class ClassesService(
     /**
      * Remove a class from user's favorites
      */
-    fun removeFromFavorites(classId: Long, userId: Long): FavoriteResponse {
+    fun removeFromFavorites(classId: UUID, userId: UUID): FavoriteResponse {
         logger.info("Removing class {} from favorites for userId: {}", classId, userId)
         
         val user = getUserById(userId)
@@ -201,7 +202,7 @@ class ClassesService(
     /**
      * Get user's favorite classes
      */
-    fun getFavoriteClasses(userId: Long, page: Int = 0, size: Int = 20): List<FavoriteClassResponse> {
+    fun getFavoriteClasses(userId: UUID, page: Int = 0, size: Int = 20): List<FavoriteClassResponse> {
         logger.debug("Getting favorite classes for userId: {}", userId)
         
         val user = getUserById(userId)
@@ -211,7 +212,7 @@ class ClassesService(
         
         return favoritesPage.content.map { favorite ->
             FavoriteClassResponse(
-                id = favorite.yogaClass.id ?: 0,
+                id = favorite.yogaClass.id ?: UUID.randomUUID(), // Should generally not be null
                 title = favorite.yogaClass.title,
                 description = favorite.yogaClass.description,
                 durationMinutes = favorite.yogaClass.durationMinutes,
@@ -226,7 +227,7 @@ class ClassesService(
     /**
      * Check if a class is favorited by user
      */
-    fun isClassFavorited(classId: Long, userId: Long): Boolean {
+    fun isClassFavorited(classId: UUID, userId: UUID): Boolean {
         val user = getUserById(userId)
         val yogaClass = yogaClassRepository.findById(classId).orElseThrow {
             IllegalArgumentException("Yoga class not found with id: $classId")
@@ -238,14 +239,14 @@ class ClassesService(
     /**
      * Get user's favorite classes count
      */
-    fun getFavoriteClassesCount(userId: Long): Long {
+    fun getFavoriteClassesCount(userId: UUID): Long {
         val user = getUserById(userId)
         return classFavoriteRepository.countByUser(user)
     }
     
     // Private helper methods
     
-    private fun getUserById(userId: Long): User {
+    private fun getUserById(userId: UUID): User {
         return userRepository.findById(userId).orElseThrow {
             IllegalArgumentException("User not found with id: $userId")
         }
@@ -295,7 +296,7 @@ class ClassesService(
     
     private fun toYogaClassResponse(yogaClass: YogaClass): YogaClassResponse {
         return YogaClassResponse(
-            id = yogaClass.id ?: 0,
+            id = yogaClass.id ?: throw IllegalStateException("Class ID cannot be null"),
             title = yogaClass.title,
             description = yogaClass.description,
             durationMinutes = yogaClass.durationMinutes,
@@ -303,6 +304,8 @@ class ClassesService(
             instructor = yogaClass.instructor,
             videoUrl = yogaClass.videoUrl,
             thumbnailUrl = yogaClass.thumbnailUrl,
+            isYoutube = yogaClass.isYoutube,
+            tags = yogaClass.tags.toSet(),
             createdAt = yogaClass.createdAt,
             updatedAt = yogaClass.updatedAt
         )
@@ -310,7 +313,7 @@ class ClassesService(
     
     private fun toYogaClassSummary(yogaClass: YogaClass, isFavorite: Boolean): YogaClassSummary {
         return YogaClassSummary(
-            id = yogaClass.id ?: 0,
+            id = yogaClass.id ?: throw IllegalStateException("Class ID cannot be null"),
             title = yogaClass.title,
             description = yogaClass.description,
             durationMinutes = yogaClass.durationMinutes,

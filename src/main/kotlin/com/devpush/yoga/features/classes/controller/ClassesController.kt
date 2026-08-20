@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.util.UUID
 
 @RestController
 @RequestMapping("/api/classes")
@@ -88,8 +89,8 @@ class ClassesController(
     fun getClassById(
         @Parameter(description = "JWT access token")
         @RequestHeader("Authorization") authorization: String,
-        @Parameter(description = "Yoga class ID", example = "1")
-        @PathVariable classId: Long
+        @Parameter(description = "Yoga class ID", example = "123e4567-e89b-12d3-a456-426614174000")
+        @PathVariable classId: UUID
     ): ResponseEntity<YogaClassResponse> {
         logger.debug("Received class details request for classId: {}", classId)
         
@@ -163,8 +164,8 @@ class ClassesController(
     fun addToFavorites(
         @Parameter(description = "JWT access token")
         @RequestHeader("Authorization") authorization: String,
-        @Parameter(description = "Yoga class ID to add to favorites", example = "1")
-        @PathVariable classId: Long
+        @Parameter(description = "Yoga class ID to add to favorites", example = "123e4567-e89b-12d3-a456-426614174000")
+        @PathVariable classId: UUID
     ): ResponseEntity<FavoriteResponse> {
         logger.info("Received add to favorites request for classId: {}", classId)
         
@@ -199,8 +200,8 @@ class ClassesController(
     fun removeFromFavorites(
         @Parameter(description = "JWT access token")
         @RequestHeader("Authorization") authorization: String,
-        @Parameter(description = "Yoga class ID to remove from favorites", example = "1")
-        @PathVariable classId: Long
+        @Parameter(description = "Yoga class ID to remove from favorites", example = "123e4567-e89b-12d3-a456-426614174000")
+        @PathVariable classId: UUID
     ): ResponseEntity<FavoriteResponse> {
         logger.info("Received remove from favorites request for classId: {}", classId)
         
@@ -260,7 +261,7 @@ class ClassesController(
         }
     }
     
-    private fun extractAndValidateUserId(authorization: String): Long {
+    private fun extractAndValidateUserId(authorization: String): UUID {
         val token = extractTokenFromHeader(authorization)
             ?: throw RuntimeException("Invalid authorization header format")
         
